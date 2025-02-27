@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:totals/cli_output.dart';
 import 'package:another_telephony/telephony.dart';
@@ -13,6 +14,10 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:intl/intl.dart';
+import 'package:totals/data/consts.dart';
+import 'package:totals/widgets/add_account_form.dart';
+import 'package:totals/widgets/bank_detail.dart';
+import 'package:totals/widgets/banks_summary_list.dart';
 
 @pragma('vm:entry-point')
 onBackgroundMessage(SmsMessage message) async {
@@ -156,6 +161,23 @@ String extractBetween(String text, String startKeyword, String endKeyword) {
   return "";
 }
 
+class BankSummary {
+  final int bankId;
+  final double totalCredit;
+  final double totalDebit;
+  final double settledBalance;
+  final double pendingCredit;
+  final int accountCount;
+
+  BankSummary(
+      {required this.accountCount,
+      required this.bankId,
+      required this.totalCredit,
+      required this.totalDebit,
+      required this.settledBalance,
+      required this.pendingCredit});
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
@@ -202,10 +224,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final telephony = Telephony.instance;
   String lastSyncTime = '';
   int transactionCount = 0;
+  int totalAccounts = 0;
   double totalCredit = 0.0;
   double currentBalance = 0.0;
   DateTime? selectedDate = DateTime.now();
   bool sortByCreditor = false;
+  List<BankSummary> bankSummaries = [];
+  List<int> tabs = [0];
+  int activeTab = 0;
   Future<void> _selectDate(BuildContext context) async {
     DateTime? picked = await showDatePicker(
       context: context,
@@ -312,6 +338,50 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.reload();
     List<String>? transactionExists = prefs.getStringList('transactions');
+    List<String>? allAccounts = prefs.getStringList('accounts');
+
+    if (allAccounts != null) {
+      Map<int, List<Map<String, dynamic>>> groupedAccounts = {};
+      for (var account in allAccounts) {
+        var accountData = jsonDecode(account);
+        int bankId = accountData['bank'];
+        if (!groupedAccounts.containsKey(bankId)) {
+          groupedAccounts[bankId] = [];
+        }
+        groupedAccounts[bankId]!.add(accountData);
+      }
+
+      List<BankSummary> tempBankSummaries =
+          groupedAccounts.entries.map((entry) {
+        int bankId = entry.key;
+        List<Map<String, dynamic>> accounts = entry.value;
+        double totalCredit = accounts.fold(
+            0.0, (sum, account) => sum + (account['credit'] ?? 0.0));
+        double totalDebit = accounts.fold(
+            0.0, (sum, account) => sum + (account['debit'] ?? 0.0));
+        double settledBalance = accounts.fold(
+            0.0, (sum, account) => sum + (account['settledBalance'] ?? 0.0));
+        double pendingCredit = accounts.fold(
+            0.0, (sum, account) => sum + (account['pendingCredit'] ?? 0.0));
+        int accountCount = accounts.length;
+
+        return BankSummary(
+          bankId: bankId,
+          totalCredit: totalCredit,
+          totalDebit: totalDebit,
+          settledBalance: settledBalance,
+          pendingCredit: pendingCredit,
+          accountCount: accountCount,
+        );
+      }).toList();
+      List<int> bankIds =
+          tempBankSummaries.map((e) => e.bankId).toList(); // Get bank names
+      setState(() {
+        totalAccounts = allAccounts.length;
+        bankSummaries = tempBankSummaries;
+        tabs = [0, ...bankIds];
+      });
+    }
 
     if (transactionExists != null) {
       List<Map<String, dynamic>> filteredTransactions = transactionExists
@@ -480,6 +550,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFFAFAFA),
       floatingActionButton: SizedBox(
         width: 65,
         height: 65,
@@ -492,9 +563,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 return ClipRRect(
                   borderRadius: BorderRadius.circular(15),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    height: MediaQuery.of(context).size.height * 0.75,
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 20, horizontal: 20),
+                    height: MediaQuery.of(context).size.height * 0.83,
                     //child: Text("form"),
+                    child: SingleChildScrollView(
+                      // Add this widget
+                      child: RegisterAccountForm(
+                        onSubmit: () {
+                          getItems();
+                        },
+                      ),
+                    ),
                   ),
                 );
               },
@@ -510,9 +590,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         ),
       ),
       appBar: AppBar(
-          backgroundColor: Colors.white, // Customize the background color
-          elevation: 4,
-          toolbarHeight: 60, // Adds a shadow for depth
+          backgroundColor: const Color(0xFFFAFAFA),
+          toolbarHeight: 60,
           title: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -556,90 +635,154 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 10),
-          Card(
-              margin:
-                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              color: Colors.blueAccent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20.0),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Colors.grey, width: 0.5),
               ),
-              elevation: 1,
+            ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
               child: Container(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFF172B6D), // Your first color
-                      Color(0xFF274AB9), // Your second color
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(20.0),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16.0, 28.0, 16.0, 28.0),
+                  child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: List.generate(tabs.length, (index) {
+                  return Container(
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                              color: activeTab == tabs[index]
+                                  ? Color(0xFF294EC3)
+                                  : Colors.transparent,
+                              width: activeTab == tabs[index] ? 2 : 0),
+                        ),
+                      ),
+                      child: TextButton(
+                        onPressed: () {
+                          setState(() {
+                            activeTab = tabs[index];
+                          });
+                        },
+                        style: TextButton.styleFrom(
+                          foregroundColor: activeTab == tabs[index]
+                              ? Color(0xFF294EC3)
+                              : Color(0xFF444750),
+                          textStyle: TextStyle(fontSize: 14),
+                        ),
+                        child: Text(tabs[index] == 0
+                            ? "Summary"
+                            : AppConstants.banks
+                                .firstWhere(
+                                    (element) => element.id == tabs[index])
+                                .shortName),
+                      ));
+                }),
+              )),
+            ),
+          ),
+          const SizedBox(
+            height: 12,
+          ),
+          activeTab == 0
+              ? Expanded(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.center, // Centers horizontally
-                        children: [
-                          Text(
-                            'TOTAL BALANCE',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF9FABD2),
-                              fontWeight: FontWeight.w500,
+                  children: [
+                    Card(
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 16.0, vertical: 8.0),
+                        color: Colors.blueAccent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20.0),
+                        ),
+                        elevation: 1,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Color(0xFF172B6D), // Your first color
+                                Color(0xFF274AB9), // Your second color
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(20.0),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(
+                                16.0, 28.0, 16.0, 28.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Row(
+                                  mainAxisAlignment: MainAxisAlignment
+                                      .center, // Centers horizontally
+                                  children: [
+                                    Text(
+                                      'TOTAL BALANCE',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Color(0xFF9FABD2),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Icon(
+                                      Icons
+                                          .remove_red_eye_outlined, // You can change this icon
+                                      size: 20,
+                                      color: Color(0xFF9FABD2),
+                                    ),
+                                    SizedBox(
+                                        width:
+                                            8), // Add spacing between icon and text
+                                  ],
+                                ),
+                                const SizedBox(
+                                  height: 4,
+                                ),
+                                Container(
+                                  width: double.infinity,
+                                  child: const Text(
+                                    "1,345,234,312.93 ETB*",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                        fontSize: 22,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold
+                                        // Subtle text color
+                                        ),
+                                  ),
+                                ),
+                                const SizedBox(
+                                  height: 4,
+                                ),
+                                Container(
+                                  width: double.infinity,
+                                  child: Text(
+                                    "4 Banks | $totalAccounts Accounts",
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Color(0xFFF7F8FB),
+                                      // Subtle text color
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          SizedBox(width: 8),
-                          Icon(
-                            Icons
-                                .remove_red_eye_outlined, // You can change this icon
-                            size: 20,
-                            color: Color(0xFF9FABD2),
-                          ),
-                          SizedBox(
-                              width: 8), // Add spacing between icon and text
-                        ],
-                      ),
-                      const SizedBox(
-                        height: 4,
-                      ),
-                      Container(
-                        width: double.infinity,
-                        child: const Text(
-                          "1,345,234,312.93 ETB*",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              fontSize: 22,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold
-                              // Subtle text color
-                              ),
-                        ),
-                      ),
-                      const SizedBox(
-                        height: 4,
-                      ),
-                      Container(
-                        width: double.infinity,
-                        child: const Text(
-                          "4 Banks | 8 Accounts",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFFF7F8FB),
-                            // Subtle text color
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )),
+                        )),
+                    const SizedBox(
+                      height: 12,
+                    ),
+                    Expanded(
+                      child: BanksSummaryList(banks: bankSummaries),
+                    )
+                  ],
+                ))
+              : BankDetail(bankId: activeTab),
         ],
       ),
     );
