@@ -178,6 +178,27 @@ class BankSummary {
       required this.pendingCredit});
 }
 
+class AccountSummary {
+  final int bankId;
+  final String accountNumber;
+  final String accountHolderName;
+  final double totalTransactions;
+  final double totalCredit;
+  final double totalDebit;
+  final double settledBalance;
+  final double pendingCredit;
+
+  AccountSummary(
+      {required this.bankId,
+      required this.accountNumber,
+      required this.accountHolderName,
+      required this.totalTransactions,
+      required this.totalCredit,
+      required this.totalDebit,
+      required this.settledBalance,
+      required this.pendingCredit});
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
@@ -230,6 +251,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   DateTime? selectedDate = DateTime.now();
   bool sortByCreditor = false;
   List<BankSummary> bankSummaries = [];
+  List<AccountSummary> accountSummaries = [];
   List<int> tabs = [0];
   int activeTab = 0;
   Future<void> _selectDate(BuildContext context) async {
@@ -376,10 +398,25 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       }).toList();
       List<int> bankIds =
           tempBankSummaries.map((e) => e.bankId).toList(); // Get bank names
+
+      List<AccountSummary> tempAccountSummary = allAccounts.map((account) {
+        var accountData = jsonDecode(account);
+        return AccountSummary(
+          accountNumber: accountData['accountNumber'],
+          bankId: accountData['bank'],
+          accountHolderName: accountData['accountHolderName'],
+          totalTransactions: accountData['totalTransactions'] ?? 0.00,
+          totalCredit: accountData['credit'] ?? 0.00,
+          totalDebit: accountData['debit'] ?? 0.00,
+          settledBalance: accountData['settledBalance'] ?? 0.00,
+          pendingCredit: accountData['pendingCredit'] ?? 0.00,
+        );
+      }).toList();
       setState(() {
         totalAccounts = allAccounts.length;
         bankSummaries = tempBankSummaries;
         tabs = [0, ...bankIds];
+        accountSummaries = tempAccountSummary;
       });
     }
 
@@ -550,7 +587,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: const Color(0xffF1F4FF),
       floatingActionButton: SizedBox(
         width: 65,
         height: 65,
@@ -590,8 +627,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         ),
       ),
       appBar: AppBar(
-          backgroundColor: const Color(0xFFFAFAFA),
+          backgroundColor: const Color(0xffF1F4FF),
           toolbarHeight: 60,
+          scrolledUnderElevation: 0,
+          elevation: 0,
           title: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -782,7 +821,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     )
                   ],
                 ))
-              : BankDetail(bankId: activeTab),
+              : BankDetail(
+                  bankId: activeTab,
+                  accountSummaries: accountSummaries
+                      .where((e) => e.bankId == activeTab)
+                      .toList(),
+                ),
         ],
       ),
     );

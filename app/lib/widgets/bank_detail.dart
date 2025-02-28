@@ -1,14 +1,138 @@
 import 'package:flutter/material.dart';
+import 'package:totals/data/consts.dart';
+import 'package:totals/main.dart';
+import 'package:totals/widgets/accounts_summary.dart';
 
-class BankDetail extends StatelessWidget {
+class BankDetail extends StatefulWidget {
   final int bankId;
+  final List<AccountSummary> accountSummaries;
 
-  const BankDetail({Key? key, required this.bankId}) : super(key: key);
+  const BankDetail({
+    Key? key,
+    required this.bankId,
+    required this.accountSummaries,
+  }) : super(key: key);
 
+  @override
+  State<BankDetail> createState() => _BankDetailState();
+}
+
+class _BankDetailState extends State<BankDetail> {
   @override
   Widget build(BuildContext context) {
     // Replace with your actual data fetching logic
 
-    return Container(child: Text(bankId.toString()));
+    return Column(
+      children: [
+        Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            color: Colors.blueAccent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20.0),
+            ),
+            elevation: 1,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF172B6D), // Your first color
+                    Color(0xFF274AB9), // Your second color
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20.0),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16.0, 28.0, 16.0, 28.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 60,
+                      height: 60,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.asset(
+                          AppConstants.banks
+                              .firstWhere(
+                                  (element) => element.id == widget.bankId)
+                              .image,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 4,
+                    ),
+                    Text(
+                      AppConstants.banks
+                          .firstWhere((element) => element.id == widget.bankId)
+                          .name,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Color(0xFFF1F4FF),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 4,
+                    ),
+                    const Row(
+                      mainAxisAlignment:
+                          MainAxisAlignment.center, // Centers horizontally
+                      children: [
+                        Text(
+                          'ACCOUNT BALANCE',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF9FABD2),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Icon(
+                          Icons
+                              .remove_red_eye_outlined, // You can change this icon
+                          size: 20,
+                          color: Color(0xFF9FABD2),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(
+                      height: 4,
+                    ),
+                    Container(
+                      width: double.infinity,
+                      child: const Text(
+                        "1,345,234,312.93 ETB*",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: 20,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold
+                            // Subtle text color
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )),
+        Container(
+          height: 8,
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: const Color(0xFFEEEEEE),
+                width: .5,
+              ),
+            ),
+          ),
+        ),
+        AccountsSummaryList(accountSummaries: widget.accountSummaries)
+      ],
+    );
   }
 }
