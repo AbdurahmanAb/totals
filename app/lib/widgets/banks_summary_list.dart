@@ -23,6 +23,7 @@ class BanksSummaryList extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
+                  color: Colors.white,
                   border: Border.all(color: const Color(0xFFEEEEEE)),
                 ),
                 child: Row(
@@ -40,6 +41,9 @@ class BanksSummaryList extends StatelessWidget {
                           fit: BoxFit.cover,
                         ),
                       ),
+                    ),
+                    const SizedBox(
+                      width: 16,
                     ),
                     Container(
                       child: Column(

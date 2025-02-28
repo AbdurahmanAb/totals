@@ -182,6 +182,16 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
                           onPressed: () {
                             setState(() {
                               activeTab = tabs[index];
+                              if (index == 1) {
+                                transactions = transactions
+                                    .where(
+                                        (element) => element.type == 'credit')
+                                    .toList();
+                              } else if (index == 2) {
+                                transactions = transactions
+                                    .where((element) => element.type == 'debit')
+                                    .toList();
+                              }
                             });
                           },
                           style: TextButton.styleFrom(
@@ -464,19 +474,34 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
                                     margin: const EdgeInsets.symmetric(
                                         vertical: 8.0),
                                     child: ListTile(
-                                      title: Text(transaction.reference),
                                       subtitle: Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                              'Creditor: ${transaction.creditor}'),
-                                          Text(
-                                              'Receiver: ${transaction.receiver}'),
-                                          Text(
-                                              'Amount: ${transaction.amount} ETB'),
-                                          Text(
-                                              'Date: ${transaction.time.toLocal()}'),
+                                            transaction.creditor
+                                                    ?.toUpperCase() ??
+                                                '',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.w600),
+                                          ),
+                                          Text('${transaction.time.toLocal()}'),
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text('${transaction.reference}'),
+                                              Text(
+                                                '${transaction.type == 'credit' ? "+" : "-"} ${transaction.amount.toStringAsFixed(2)} ETB',
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.w500,
+                                                    color: transaction.type ==
+                                                            'credit'
+                                                        ? Colors.green
+                                                        : Colors.red),
+                                              ),
+                                            ],
+                                          )
                                         ],
                                       ),
                                     ),

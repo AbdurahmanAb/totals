@@ -199,6 +199,39 @@ class AccountSummary {
       required this.pendingCredit});
 }
 
+Map<String, dynamic> extractCBETransactionDetails(String text) {
+  String amountKeyword = "Credited with ETB ";
+  int amountStart = text.indexOf(amountKeyword) + amountKeyword.length;
+  int amountEnd = text.indexOf(".", amountStart) + 3; // Includes decimal part
+  String creditedAmount = text.substring(amountStart, amountEnd);
+
+  String transactionKeyword = "?id=";
+  int transactionStart =
+      text.indexOf(transactionKeyword) + transactionKeyword.length;
+  String transactionId =
+      text.substring(transactionStart).split(" ")[0]; // Stops at first space
+
+  return {
+    "creditedAmount": creditedAmount,
+    "transactionId": transactionId,
+    "bankId": 1,
+    "type": "CREDIT",
+  };
+}
+
+class AllSummary {
+  final double totalCredit;
+  final double totalDebit;
+  final int banks;
+  final int accounts;
+
+  AllSummary(
+      {required this.totalCredit,
+      required this.totalDebit,
+      required this.banks,
+      required this.accounts});
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
@@ -252,6 +285,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   bool sortByCreditor = false;
   List<BankSummary> bankSummaries = [];
   List<AccountSummary> accountSummaries = [];
+  AllSummary? summary;
+
   List<int> tabs = [0];
   int activeTab = 0;
   Future<void> _selectDate(BuildContext context) async {
@@ -271,8 +306,29 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   onMessage(SmsMessage message) async {
+    print(message.body);
     print("Received new messages from ${message.address}");
     try {
+      if (message.address == "CBE") {
+        // extract the cbe message
+        var details = extractCBETransactionDetails(message.body!);
+        print(details);
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        var allTransactions = prefs.getStringList(key) ?? [];
+        // check if there's a member with the same reference as the new one, if there is, skip
+        if (allTransactions.isNotEmpty) {
+          for (var i = 0; i < allTransactions.length; i++) {
+            var transaction = jsonDecode(allTransactions[i]);
+            if (transaction['reference'] == details['reference']) {
+              return;
+            }
+          }
+        }
+        allTransactions.add(jsonEncode(details));
+        await prefs.setStringList(key, allTransactions);
+        getItems();
+        return;
+      }
       if (message.body?.isNotEmpty == true) {
         var details = extractDetails(message.body!);
         if (details['amount'] != 'Not found' &&
@@ -361,6 +417,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     await prefs.reload();
     List<String>? transactionExists = prefs.getStringList('transactions');
     List<String>? allAccounts = prefs.getStringList('accounts');
+    List<String>? allTransactions = prefs.getStringList('transactions');
 
     if (allAccounts != null) {
       Map<int, List<Map<String, dynamic>>> groupedAccounts = {};
@@ -417,66 +474,81 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         bankSummaries = tempBankSummaries;
         tabs = [0, ...bankIds];
         accountSummaries = tempAccountSummary;
+        // total credit is the sum of all transaction amount with the type CREDIT
+        double tempTotalCredit = allTransactions?.fold(
+                0.0,
+                (sum, transaction) =>
+                    (sum ?? 0.0) +
+                    (jsonDecode(transaction)['type'] == 'CREDIT'
+                        ? double.parse(
+                            jsonDecode(transaction)['creditedAmount'])
+                        : 0.0)) ??
+            0.0;
+        summary = AllSummary(
+            totalCredit: tempTotalCredit,
+            totalDebit: 0,
+            banks: allAccounts.length,
+            accounts: allAccounts.length);
       });
     }
 
-    if (transactionExists != null) {
-      List<Map<String, dynamic>> filteredTransactions = transactionExists
-          .map((e) => jsonDecode(e) as Map<String, dynamic>) // Explicit cast
-          .toList();
-      // filter out only todays transaction
-      filteredTransactions = searchKey.isEmpty
-          ? filteredTransactions
-              .where((transaction) => transaction['time'].contains(
-                  DateFormat('dd MMM yyyy')
-                      .format(selectedDate ?? DateTime.now())
-                      .toUpperCase()))
-              .toList()
-          : filteredTransactions
-              .where((transaction) =>
-                  transaction['time'].contains(DateFormat('dd MMM yyyy')
-                      .format(selectedDate ?? DateTime.now())
-                      .toUpperCase()) &&
-                  (transaction['creditor']
-                          .toString()
-                          .toLowerCase()
-                          .contains(searchKey.toLowerCase()) ||
-                      transaction['reference']
-                          .toString()
-                          .toLowerCase()
-                          .contains(searchKey.toLowerCase())))
-              .toList();
-      print(filteredTransactions);
-      setState(() {
-        transactions = filteredTransactions;
-        if (searchKey.isEmpty) {
-          transactionCount = transactions.length;
+    // if (transactionExists != null) {
+    //   List<Map<String, dynamic>> filteredTransactions = transactionExists
+    //       .map((e) => jsonDecode(e) as Map<String, dynamic>) // Explicit cast
+    //       .toList();
+    //   // filter out only todays transaction
+    //   filteredTransactions = searchKey.isEmpty
+    //       ? filteredTransactions
+    //           .where((transaction) => transaction['time'].contains(
+    //               DateFormat('dd MMM yyyy')
+    //                   .format(selectedDate ?? DateTime.now())
+    //                   .toUpperCase()))
+    //           .toList()
+    //       : filteredTransactions
+    //           .where((transaction) =>
+    //               transaction['time'].contains(DateFormat('dd MMM yyyy')
+    //                   .format(selectedDate ?? DateTime.now())
+    //                   .toUpperCase()) &&
+    //               (transaction['creditor']
+    //                       .toString()
+    //                       .toLowerCase()
+    //                       .contains(searchKey.toLowerCase()) ||
+    //                   transaction['reference']
+    //                       .toString()
+    //                       .toLowerCase()
+    //                       .contains(searchKey.toLowerCase())))
+    //           .toList();
+    //   print(filteredTransactions);
+    //   setState(() {
+    //     transactions = filteredTransactions;
+    //     if (searchKey.isEmpty) {
+    //       transactionCount = transactions.length;
 
-          totalCredit = transactions.fold(0.0, (sum, item) {
-            return sum + double.tryParse(item['amount'] ?? '0')!;
-          });
+    //       totalCredit = transactions.fold(0.0, (sum, item) {
+    //         return sum + double.tryParse(item['amount'] ?? '0')!;
+    //       });
 
-          // Calculate current balance (could be based on your own logic)
-          currentBalance = totalCredit;
-        }
-      });
-      String last_sync_store = prefs.getString('last_sync') ?? '';
-      if (last_sync_store.isNotEmpty) {
-        lastSyncTime = last_sync_store.split(".")[0];
-      }
-    } else {
-      if (searchKey.isEmpty) {
-        setState(() {
-          transactions = [];
-          setState(() {
-            transactions = [];
-            transactionCount = 0;
-            totalCredit = 0.0;
-            currentBalance = 0.0;
-          });
-        });
-      }
-    }
+    //       // Calculate current balance (could be based on your own logic)
+    //       currentBalance = totalCredit;
+    //     }
+    //   });
+    //   String last_sync_store = prefs.getString('last_sync') ?? '';
+    //   if (last_sync_store.isNotEmpty) {
+    //     lastSyncTime = last_sync_store.split(".")[0];
+    //   }
+    // } else {
+    //   if (searchKey.isEmpty) {
+    //     setState(() {
+    //       transactions = [];
+    //       setState(() {
+    //         transactions = [];
+    //         transactionCount = 0;
+    //         totalCredit = 0.0;
+    //         currentBalance = 0.0;
+    //       });
+    //     });
+    //   }
+    // }
   }
 
   bool isSyncing = false;
@@ -783,8 +855,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                 ),
                                 Container(
                                   width: double.infinity,
-                                  child: const Text(
-                                    "1,345,234,312.93 ETB*",
+                                  child: Text(
+                                    "${summary?.totalCredit ?? 0 - (summary?.totalDebit ?? 0)} ETB*",
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                         fontSize: 22,
