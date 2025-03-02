@@ -37,8 +37,8 @@ class _BankDetailState extends State<BankDetail> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Color(0xFF172B6D), // Your first color
-                    Color(0xFF274AB9), // Your second color
+                    Color(0xFF172B6D),
+                    Color(0xFF274AB9),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(20.0),
@@ -80,8 +80,7 @@ class _BankDetailState extends State<BankDetail> {
                       height: 4,
                     ),
                     const Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.center, // Centers horizontally
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
                           'ACCOUNT BALANCE',
@@ -93,8 +92,7 @@ class _BankDetailState extends State<BankDetail> {
                         ),
                         SizedBox(width: 8),
                         Icon(
-                          Icons
-                              .remove_red_eye_outlined, // You can change this icon
+                          Icons.remove_red_eye_outlined,
                           size: 20,
                           color: Color(0xFF9FABD2),
                         ),
@@ -111,9 +109,7 @@ class _BankDetailState extends State<BankDetail> {
                         style: TextStyle(
                             fontSize: 20,
                             color: Colors.white,
-                            fontWeight: FontWeight.bold
-                            // Subtle text color
-                            ),
+                            fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
