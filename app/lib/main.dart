@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:totals/cli_output.dart';
 import 'package:another_telephony/telephony.dart';
@@ -20,6 +21,7 @@ import 'package:totals/utils/sms_utils.dart';
 import 'package:totals/widgets/add_account_form.dart';
 import 'package:totals/widgets/bank_detail.dart';
 import 'package:totals/widgets/banks_summary_list.dart';
+import 'package:totals/auth-service.dart';
 
 @pragma('vm:entry-point')
 onBackgroundMessage(SmsMessage message) async {
@@ -267,9 +269,12 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
+  final LocalAuthentication _auth = LocalAuthentication();
+
   List<SmsMessage> receivedMessages = [];
   List<SmsMessage> sentMessages = [];
   String output = 'App launched\n';
+  bool _isAuthenticated = false;
 
   bool serviceStarted = false;
   String connectionStatus = "Server is offline";
@@ -361,6 +366,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    // _authenticate();
     WidgetsBinding.instance.addObserver(this); // Add observer
     startServer();
     getItems();
@@ -383,6 +389,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       getItems();
       syncData();
     }
+  }
+
+  Future<void> _authenticate() async {
+    bool authenticated = await AuthService().authenticate();
+    setState(() {
+      _isAuthenticated = authenticated;
+    });
   }
 
   void getItems({String searchKey = ""}) async {
@@ -631,256 +644,315 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xffF1F4FF),
-      floatingActionButton: SizedBox(
-        width: 65,
-        height: 65,
-        child: FloatingActionButton(
-          onPressed: () {
-            showModalBottomSheet(
-              isScrollControlled: true,
-              context: context,
-              builder: (context) {
-                return ClipRRect(
-                  borderRadius: BorderRadius.circular(15),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 20, horizontal: 20),
-                    height: MediaQuery.of(context).size.height * 0.83,
-                    //child: Text("form"),
-                    child: SingleChildScrollView(
-                      // Add this widget
-                      child: RegisterAccountForm(
-                        onSubmit: () {
-                          getItems();
-                        },
-                      ),
-                    ),
-                  ),
-                );
-              },
-            );
-          },
-          backgroundColor: Color(0xFF294EC3),
-          shape: const CircleBorder(), // Makes it perfectly circular
-          child: const Icon(
-            Icons.add, // Changes menu icon to plus icon
-            color: Colors.white,
-            size: 24,
-          ),
-        ),
-      ),
-      appBar: AppBar(
-          backgroundColor: const Color(0xffF1F4FF),
-          toolbarHeight: 60,
-          scrolledUnderElevation: 0,
-          elevation: 0,
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ClipRRect(
-                    // borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      "assets/images/logo-text.png",
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  // Center(
-                  //   child: SvgPicture.asset(
-                  //     'assets/images/logo.svg',
-                  //     semanticsLabel: 'My SVG Image',
-                  //     height: 100,
-                  //     width: 70,
-                  //   ),
-                  // ),
-                ],
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.lock_outline,
-                        color: Color(0xFF8DA1E1), size: 25),
-                    onPressed: () => _selectDate(context),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.search,
-                        color: Color(0xFF8DA1E1), size: 25),
-                    onPressed: () => _selectDate(context),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.calendar_month_outlined,
-                        color: Color(0xFF8DA1E1), size: 25),
-                    onPressed: () => _selectDate(context),
-                  ),
-                ],
-              ),
-            ],
-          )),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: const BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: Colors.grey, width: 0.5),
-              ),
-            ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Container(
-                  child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: List.generate(tabs.length, (index) {
-                  return Container(
-                      decoration: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(
-                              color: activeTab == tabs[index]
-                                  ? Color(0xFF294EC3)
-                                  : Colors.transparent,
-                              width: activeTab == tabs[index] ? 2 : 0),
-                        ),
-                      ),
-                      child: TextButton(
-                        onPressed: () {
-                          setState(() {
-                            activeTab = tabs[index];
-                          });
-                        },
-                        style: TextButton.styleFrom(
-                          foregroundColor: activeTab == tabs[index]
-                              ? Color(0xFF294EC3)
-                              : Color(0xFF444750),
-                          textStyle: TextStyle(fontSize: 14),
-                        ),
-                        child: Text(tabs[index] == 0
-                            ? "Summary"
-                            : AppConstants.banks
-                                .firstWhere(
-                                    (element) => element.id == tabs[index])
-                                .shortName),
-                      ));
-                }),
-              )),
-            ),
-          ),
-          const SizedBox(
-            height: 12,
-          ),
-          activeTab == 0
-              ? Expanded(
-                  child: Column(
-                  children: [
-                    Card(
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 16.0, vertical: 8.0),
-                        color: Colors.blueAccent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20.0),
-                        ),
-                        elevation: 1,
+    return !_isAuthenticated
+        ? Scaffold(
+            body: Center(child: Text("Authentication Required!")),
+            floatingActionButton: _authButton(),
+          )
+        : Scaffold(
+            backgroundColor: const Color(0xffF1F4FF),
+            floatingActionButton: SizedBox(
+              width: 65,
+              height: 65,
+              child: FloatingActionButton(
+                onPressed: () {
+                  showModalBottomSheet(
+                    isScrollControlled: true,
+                    context: context,
+                    builder: (context) {
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(15),
                         child: Container(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Color(0xFF172B6D), // Your first color
-                                Color(0xFF274AB9), // Your second color
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(20.0),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(
-                                16.0, 28.0, 16.0, 28.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Row(
-                                  mainAxisAlignment: MainAxisAlignment
-                                      .center, // Centers horizontally
-                                  children: [
-                                    Text(
-                                      'TOTAL BALANCE',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Color(0xFF9FABD2),
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Icon(
-                                      Icons
-                                          .remove_red_eye_outlined, // You can change this icon
-                                      size: 20,
-                                      color: Color(0xFF9FABD2),
-                                    ),
-                                    SizedBox(
-                                        width:
-                                            8), // Add spacing between icon and text
-                                  ],
-                                ),
-                                const SizedBox(
-                                  height: 4,
-                                ),
-                                Container(
-                                  width: double.infinity,
-                                  child: Text(
-                                    "${summary?.totalCredit ?? 0 - (summary?.totalDebit ?? 0)} ETB*",
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                        fontSize: 22,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold
-                                        // Subtle text color
-                                        ),
-                                  ),
-                                ),
-                                const SizedBox(
-                                  height: 4,
-                                ),
-                                Container(
-                                  width: double.infinity,
-                                  child: Text(
-                                    "4 Banks | $totalAccounts Accounts",
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      color: Color(0xFFF7F8FB),
-                                      // Subtle text color
-                                    ),
-                                  ),
-                                ),
-                              ],
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 20, horizontal: 20),
+                          height: MediaQuery.of(context).size.height * 0.83,
+                          //child: Text("form"),
+                          child: SingleChildScrollView(
+                            // Add this widget
+                            child: RegisterAccountForm(
+                              onSubmit: () {
+                                getItems();
+                              },
                             ),
                           ),
-                        )),
-                    const SizedBox(
-                      height: 12,
-                    ),
-                    Expanded(
-                      child: BanksSummaryList(banks: bankSummaries),
-                    )
-                  ],
-                ))
-              : BankDetail(
-                  bankId: activeTab,
-                  accountSummaries: accountSummaries
-                      .where((e) => e.bankId == activeTab)
-                      .toList(),
+                        ),
+                      );
+                    },
+                  );
+                },
+                backgroundColor: Color(0xFF294EC3),
+                shape: const CircleBorder(), // Makes it perfectly circular
+                child: const Icon(
+                  Icons.add, // Changes menu icon to plus icon
+                  color: Colors.white,
+                  size: 24,
                 ),
-        ],
-      ),
+              ),
+            ),
+            appBar: AppBar(
+                backgroundColor: const Color(0xffF1F4FF),
+                toolbarHeight: 60,
+                scrolledUnderElevation: 0,
+                elevation: 0,
+                title: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ClipRRect(
+                          // borderRadius: BorderRadius.circular(12),
+                          child: Image.asset(
+                            "assets/images/logo-text.png",
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        // Center(
+                        //   child: SvgPicture.asset(
+                        //     'assets/images/logo.svg',
+                        //     semanticsLabel: 'My SVG Image',
+                        //     height: 100,
+                        //     width: 70,
+                        //   ),
+                        // ),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.lock_outline,
+                              color: Color(0xFF8DA1E1), size: 25),
+                          onPressed: () {
+                            setState(() {
+                              _isAuthenticated = false;
+                            });
+                          },
+                        ),
+                        // IconButton(
+                        //   icon: const Icon(Icons.search,
+                        //       color: Color(0xFF8DA1E1), size: 25),
+                        //   onPressed: () => _selectDate(context),
+                        // ),
+                        // IconButton(
+                        //   icon: const Icon(Icons.calendar_month_outlined,
+                        //       color: Color(0xFF8DA1E1), size: 25),
+                        //   onPressed: () => _selectDate(context),
+                        // ),
+                      ],
+                    ),
+                  ],
+                )),
+            body: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey, width: 0.5),
+                    ),
+                  ),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Container(
+                        child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: List.generate(tabs.length, (index) {
+                        return Container(
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(
+                                    color: activeTab == tabs[index]
+                                        ? Color(0xFF294EC3)
+                                        : Colors.transparent,
+                                    width: activeTab == tabs[index] ? 2 : 0),
+                              ),
+                            ),
+                            child: TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  activeTab = tabs[index];
+                                });
+                              },
+                              style: TextButton.styleFrom(
+                                foregroundColor: activeTab == tabs[index]
+                                    ? Color(0xFF294EC3)
+                                    : Color(0xFF444750),
+                                textStyle: TextStyle(fontSize: 14),
+                              ),
+                              child: Text(tabs[index] == 0
+                                  ? "Summary"
+                                  : AppConstants.banks
+                                      .firstWhere((element) =>
+                                          element.id == tabs[index])
+                                      .shortName),
+                            ));
+                      }),
+                    )),
+                  ),
+                ),
+                const SizedBox(
+                  height: 12,
+                ),
+                activeTab == 0
+                    ? Expanded(
+                        child: Column(
+                        children: [
+                          Card(
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: 16.0, vertical: 8.0),
+                              color: Colors.blueAccent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20.0),
+                              ),
+                              elevation: 1,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Color(0xFF172B6D), // Your first color
+                                      Color(0xFF274AB9), // Your second color
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(20.0),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                      16.0, 28.0, 16.0, 28.0),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Row(
+                                        mainAxisAlignment: MainAxisAlignment
+                                            .center, // Centers horizontally
+                                        children: [
+                                          Text(
+                                            'TOTAL BALANCE',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Color(0xFF9FABD2),
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          SizedBox(width: 8),
+                                          Icon(
+                                            Icons
+                                                .remove_red_eye_outlined, // You can change this icon
+                                            size: 20,
+                                            color: Color(0xFF9FABD2),
+                                          ),
+                                          SizedBox(
+                                              width:
+                                                  8), // Add spacing between icon and text
+                                        ],
+                                      ),
+                                      const SizedBox(
+                                        height: 4,
+                                      ),
+                                      Container(
+                                        width: double.infinity,
+                                        child: Text(
+                                          "${summary?.totalCredit ?? 0 - (summary?.totalDebit ?? 0)} ETB*",
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                              fontSize: 22,
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold
+                                              // Subtle text color
+                                              ),
+                                        ),
+                                      ),
+                                      const SizedBox(
+                                        height: 4,
+                                      ),
+                                      Container(
+                                        width: double.infinity,
+                                        child: Text(
+                                          "4 Banks | $totalAccounts Accounts",
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            color: Color(0xFFF7F8FB),
+                                            // Subtle text color
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )),
+                          const SizedBox(
+                            height: 12,
+                          ),
+                          Expanded(
+                            child: BanksSummaryList(banks: bankSummaries),
+                          )
+                        ],
+                      ))
+                    : BankDetail(
+                        bankId: activeTab,
+                        accountSummaries: accountSummaries
+                            .where((e) => e.bankId == activeTab)
+                            .toList(),
+                      ),
+              ],
+            ),
+          );
+  }
+
+  Widget _authButton() {
+    return FloatingActionButton(
+      onPressed: () async {
+        if (!_isAuthenticated) {
+          final bool canAuthenticateWithBiometrics =
+              await _auth.canCheckBiometrics;
+          if (canAuthenticateWithBiometrics) {
+            try {
+              final bool didAuthenticate = await _auth.authenticate(
+                  localizedReason:
+                      'Please authenticate to show account details',
+                  options: const AuthenticationOptions(biometricOnly: false));
+              setState(() {
+                _isAuthenticated = didAuthenticate;
+              });
+            } catch (e) {
+              print(e);
+            }
+          }
+        } else {
+          _isAuthenticated = false;
+        }
+      },
+      child: Icon(_isAuthenticated ? Icons.lock : Icons.lock_open),
+    );
+  }
+}
+
+class LockScreen extends StatelessWidget {
+  const LockScreen({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(child: Text("App Locked. Please authenticate.")),
+    );
+  }
+}
+
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(child: Text("Welcome to the app!")),
     );
   }
 }
