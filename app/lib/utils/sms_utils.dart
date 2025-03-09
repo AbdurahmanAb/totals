@@ -44,13 +44,39 @@ class SmsUtils {
           }
         }
       }
+      String? currentBalance;
+      String balanceStartKeywordd = "Balance is ETB";
+      String balanceEndKeyword = "Thank";
+
+      int balanceStartIndex = message.indexOf(balanceStartKeywordd);
+      int balanceEndIndex = message.indexOf(balanceEndKeyword);
+
+      if (balanceStartIndex != -1 && balanceEndIndex != -1) {
+        balanceStartIndex += balanceStartKeywordd.length;
+        String extracted =
+            message.substring(balanceStartIndex, balanceEndIndex);
+        extracted = extracted.replaceAll(",", "");
+        if (extracted.endsWith(".")) {
+          extracted = extracted.substring(0, extracted.length - 1);
+        }
+
+        print("Current Balance: ETB $extracted");
+        currentBalance = extracted.trim();
+        if (currentBalance.endsWith(".")) {
+          currentBalance =
+              currentBalance.substring(0, currentBalance.length - 1);
+        }
+      }
+
       print("Credited amount: $creditedAmount");
+      print("current balance : $currentBalance");
       print("Transaction ID: $transactionId");
       print("Last 4 digits: $last4Digits");
 
       return {
         "amount": creditedAmount,
         "reference": transactionId,
+        "currentBalance": currentBalance,
         "bankId": 1,
         "type": "CREDIT",
         "transactionLink": "https://apps.cbe.come.et:100/?id=${transactionId}",
@@ -111,10 +137,33 @@ class SmsUtils {
         }
       }
     }
+    String? currentBalance;
+    String balanceStartKeywordd = "Balance is ETB";
+    String balanceEndKeyword = "Thank";
+
+    int balanceStartIndex = message.indexOf(balanceStartKeywordd);
+    int balanceEndIndex = message.indexOf(balanceEndKeyword);
+
+    if (balanceStartIndex != -1 && balanceEndIndex != -1) {
+      balanceStartIndex += balanceStartKeywordd.length;
+      String extracted = message.substring(balanceStartIndex, balanceEndIndex);
+      extracted = extracted.replaceAll(",", "");
+      if (extracted.endsWith(".")) {
+        extracted = extracted.substring(0, extracted.length - 1);
+      }
+
+      print("Current Balance: ETB $extracted");
+      currentBalance = extracted.trim();
+      currentBalance = extracted.trim();
+      if (currentBalance.endsWith(".")) {
+        currentBalance = currentBalance.substring(0, currentBalance.length - 1);
+      }
+    }
 
     return {
       "amount": totalDebited,
       "reference": transactionId,
+      "currentBalance": currentBalance,
       "bankId": 1,
       "type": "DEBIT",
       "transactionLink": "https://apps.cbe.come.et:100/?id=${transactionId}",

@@ -31,7 +31,7 @@ onBackgroundMessage(SmsMessage message) async {
   }
 
   try {
-    if (message.address == "CBE") {
+    if (message.address == "+251943685872") {
       var details = SmsUtils.extractCBETransactionDetails(message.body!);
       SharedPreferences prefs = await SharedPreferences.getInstance();
       var allTransactions = prefs.getStringList("transactions") ?? [];
@@ -44,7 +44,23 @@ onBackgroundMessage(SmsMessage message) async {
           }
         }
       }
-      print(details);
+      String accountNum = details["accountNumber"];
+      var allAccounts = prefs.getStringList("accounts") ?? [];
+      if (allAccounts.isNotEmpty) {
+        for (var i = 0; i < allAccounts.length; i++) {
+          var account = jsonDecode(allAccounts[i]);
+          if (account['accountNumber']
+                  .substring(account['accountNumber'].length - 4) ==
+              accountNum) {
+            account['balance'] = details["currentBalance"];
+            allAccounts[i] = jsonEncode(account);
+            await prefs.setStringList("accounts", allAccounts);
+            print("account balance updated");
+            break;
+          }
+        }
+      }
+
       allTransactions.add(jsonEncode(details));
       await prefs.setStringList("transactions", allTransactions);
       return;
@@ -196,26 +212,6 @@ class AccountSummary {
       required this.pendingCredit});
 }
 
-Map<String, dynamic> extractCBETransactionDetails(String text) {
-  String amountKeyword = "Credited with ETB ";
-  int amountStart = text.indexOf(amountKeyword) + amountKeyword.length;
-  int amountEnd = text.indexOf(".", amountStart) + 3; // Includes decimal part
-  String creditedAmount = text.substring(amountStart, amountEnd);
-
-  String transactionKeyword = "?id=";
-  int transactionStart =
-      text.indexOf(transactionKeyword) + transactionKeyword.length;
-  String transactionId =
-      text.substring(transactionStart).split(" ")[0]; // Stops at first space
-
-  return {
-    "creditedAmount": creditedAmount,
-    "transactionId": transactionId,
-    "bankId": 1,
-    "type": "CREDIT",
-  };
-}
-
 class AllSummary {
   final double totalCredit;
   final double totalDebit;
@@ -322,7 +318,21 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             }
           }
         }
-        print(details);
+        String accountNum = details["accountNumber"];
+        var allAccounts = prefs.getStringList("accounts") ?? [];
+        if (allAccounts.isNotEmpty) {
+          for (var i = 0; i < allAccounts.length; i++) {
+            var account = jsonDecode(allAccounts[i]);
+            if (account['accountNumber']
+                    .substring(account['accountNumber'].length - 4) ==
+                accountNum) {
+              account['balance'] = details["currentBalance"];
+              allAccounts[i] = jsonEncode(account);
+              await prefs.setStringList("accounts", allAccounts);
+              break;
+            }
+          }
+        }
         allTransactions.add(jsonEncode(details));
         // update account balance
         await prefs.setStringList(key, allTransactions);
@@ -397,9 +407,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void getItems({String searchKey = ""}) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.reload();
-    List<String>? transactionExists = prefs.getStringList('transactions');
-    print(transactionExists?.length);
     List<String>? allAccounts = prefs.getStringList('accounts');
+    print(allAccounts);
     List<String>? allTransactions = prefs.getStringList('transactions');
 
     if (allAccounts != null) {
