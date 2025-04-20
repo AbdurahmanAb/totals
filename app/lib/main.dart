@@ -710,6 +710,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool allSummaryDetailExpanded = false;
   bool showTotalBalance = false;
+  List<String> visibleTotalBalancesForSubCards = [];
 
   @override
   Widget build(BuildContext context) {
@@ -989,6 +990,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                                           setState(() {
                                                             showTotalBalance =
                                                                 !showTotalBalance;
+                                                            visibleTotalBalancesForSubCards = visibleTotalBalancesForSubCards
+                                                                        .length ==
+                                                                    0
+                                                                ? bankSummaries
+                                                                    .map((e) => e
+                                                                        .bankId
+                                                                        .toString())
+                                                                    .toList()
+                                                                : [];
                                                           });
                                                         },
                                                         child: Icon(
@@ -1123,7 +1133,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                             height: 12,
                           ),
                           Expanded(
-                            child: BanksSummaryList(banks: bankSummaries),
+                            child: BanksSummaryList(
+                                banks: bankSummaries,
+                                visibleTotalBalancesForSubCards:
+                                    visibleTotalBalancesForSubCards),
                           )
                         ],
                       ))

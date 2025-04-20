@@ -7,8 +7,12 @@ import 'package:totals/widgets/account_detail.dart';
 
 class AccountsSummaryList extends StatefulWidget {
   final List<AccountSummary> accountSummaries;
+  List<String> visibleTotalBalancesForSubCards;
 
-  AccountsSummaryList({Key? key, required this.accountSummaries})
+  AccountsSummaryList(
+      {Key? key,
+      required this.accountSummaries,
+      required this.visibleTotalBalancesForSubCards})
       : super(key: key);
 
   @override
@@ -122,15 +126,65 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                                           color: Colors.grey,
                                         ),
                                       ),
-                                      Text(
-                                          formatNumberWithComma(double.tryParse(
-                                                  account.balance)) +
-                                              " ETB",
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFF444750),
-                                          )),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                              widget.visibleTotalBalancesForSubCards
+                                                      .contains(
+                                                          account.accountNumber)
+                                                  ? formatNumberWithComma(
+                                                          double.tryParse(
+                                                              account
+                                                                  .balance)) +
+                                                      " ETB"
+                                                  : "*" *
+                                                      formatNumberWithComma(
+                                                              double.tryParse(
+                                                                  account
+                                                                      .balance))
+                                                          .length,
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF444750),
+                                              )),
+                                          SizedBox(
+                                            width: 20,
+                                          ),
+                                          GestureDetector(
+                                              onTap: () {
+                                                setState(() {
+                                                  if (widget
+                                                      .visibleTotalBalancesForSubCards
+                                                      .contains(account
+                                                          .accountNumber)) {
+                                                    widget
+                                                        .visibleTotalBalancesForSubCards
+                                                        .remove(account
+                                                            .accountNumber);
+                                                  } else {
+                                                    widget
+                                                        .visibleTotalBalancesForSubCards
+                                                        .add(account
+                                                            .accountNumber);
+                                                  }
+                                                });
+                                              },
+                                              child: Icon(
+                                                widget.visibleTotalBalancesForSubCards
+                                                        .contains(account
+                                                            .accountNumber)
+                                                    ? Icons.visibility_off
+                                                    : Icons
+                                                        .remove_red_eye_outlined,
+                                                color: Color(0xFFBDC0CA),
+                                              ))
+                                        ],
+                                      ),
                                     ],
                                   ),
                                 ),

@@ -6,8 +6,10 @@ import 'package:totals/utils/text_utils.dart';
 
 class BanksSummaryList extends StatefulWidget {
   final List<BankSummary> banks;
+  List<String> visibleTotalBalancesForSubCards;
 
-  BanksSummaryList({required this.banks});
+  BanksSummaryList(
+      {required this.banks, required this.visibleTotalBalancesForSubCards});
 
   @override
   State<BanksSummaryList> createState() => _BanksSummaryListState();
@@ -101,13 +103,51 @@ class _BanksSummaryListState extends State<BanksSummaryList> {
                                     color: Colors.grey,
                                   ),
                                 ),
-                                Text(
-                                    (formatNumberWithComma(bank.totalBalance)) +
-                                        " ETB",
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    )),
+                                Row(
+                                  children: [
+                                    Text(
+                                        widget.visibleTotalBalancesForSubCards
+                                                .contains(
+                                                    bank.bankId.toString())
+                                            ? (formatNumberWithComma(
+                                                    bank.totalBalance)) +
+                                                " ETB"
+                                            : "*" * 5,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        )),
+                                    SizedBox(
+                                      width: 20,
+                                    ),
+                                    GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            if (widget
+                                                .visibleTotalBalancesForSubCards
+                                                .contains(
+                                                    bank.bankId.toString())) {
+                                              widget
+                                                  .visibleTotalBalancesForSubCards
+                                                  .remove(
+                                                      bank.bankId.toString());
+                                            } else {
+                                              widget
+                                                  .visibleTotalBalancesForSubCards
+                                                  .add(bank.bankId.toString());
+                                            }
+                                          });
+                                        },
+                                        child: Icon(
+                                          widget.visibleTotalBalancesForSubCards
+                                                  .contains(
+                                                      bank.bankId.toString())
+                                              ? Icons.visibility_off
+                                              : Icons.remove_red_eye_outlined,
+                                          color: Color(0xFFBDC0CA),
+                                        ))
+                                  ],
+                                )
                               ],
                             ),
                           ),

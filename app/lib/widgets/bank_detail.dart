@@ -21,6 +21,8 @@ class BankDetail extends StatefulWidget {
 class _BankDetailState extends State<BankDetail> {
   bool isBankDetailExpanded = false;
   bool showTotalBalance = false;
+  List<String> visibleTotalBalancesForSubCards = [];
+
   @override
   Widget build(BuildContext context) {
     // Replace with your actual data fetching logic
@@ -120,6 +122,13 @@ class _BankDetailState extends State<BankDetail> {
                               onTap: () {
                                 setState(() {
                                   showTotalBalance = !showTotalBalance;
+                                  visibleTotalBalancesForSubCards =
+                                      visibleTotalBalancesForSubCards.length ==
+                                              0
+                                          ? widget.accountSummaries
+                                              .map((e) => e.accountNumber)
+                                              .toList()
+                                          : [];
                                 });
                               },
                               child: Icon(
@@ -225,7 +234,9 @@ class _BankDetailState extends State<BankDetail> {
                 ),
               ),
             )),
-        AccountsSummaryList(accountSummaries: widget.accountSummaries)
+        AccountsSummaryList(
+            accountSummaries: widget.accountSummaries,
+            visibleTotalBalancesForSubCards: visibleTotalBalancesForSubCards),
       ],
     );
   }
