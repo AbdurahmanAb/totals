@@ -12,6 +12,7 @@ import 'package:totals/widgets/total_balance_card.dart';
 import 'package:totals/widgets/debug_sms_dialog.dart';
 import 'package:totals/widgets/debug_transactions_dialog.dart';
 import 'package:totals/widgets/failed_parse_dialog.dart';
+import 'package:totals/services/sms_config_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -26,6 +27,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final PageController _pageController = PageController();
 
   bool _isAuthenticated = false;
+  bool _hasCheckedInternet = false;
 
   // UI State
   bool showTotalBalance = false;
@@ -50,6 +52,43 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     });
   }
 
+  void _showInternetDialog() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text("No Internet Connection"),
+          content: const Text(
+              "An internet connection is needed just once for the first setup. Please reconnect and try again."),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                // Try to initialize again
+                final configService = SmsConfigService();
+                final stillNeedsInternet =
+                    await configService.initializePatterns();
+                if (stillNeedsInternet && mounted) {
+                  _showInternetDialog();
+                }
+              },
+              child: const Text("Retry"),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text("Continue Offline"),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -61,7 +100,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       Provider.of<TransactionProvider>(context, listen: false).loadData();
-      // _syncService.syncTransactions();
     }
   }
 
@@ -76,6 +114,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           setState(() {
             _isAuthenticated = didAuthenticate;
           });
+
+          // Check internet requirement after successful authentication
+          if (didAuthenticate && !_hasCheckedInternet) {
+            _hasCheckedInternet = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _checkInternetRequirement();
+            });
+          }
         } catch (e) {
           print(e);
         }
@@ -83,7 +129,16 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     } else {
       setState(() {
         _isAuthenticated = false;
+        _hasCheckedInternet = false; // Reset when logging out
       });
+    }
+  }
+
+  Future<void> _checkInternetRequirement() async {
+    final configService = SmsConfigService();
+    final needsInternet = await configService.initializePatterns();
+    if (needsInternet && mounted) {
+      _showInternetDialog();
     }
   }
 
@@ -291,12 +346,61 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                           },
                                         ),
                                         const SizedBox(height: 12),
-                                        Flexible(
-                                          child: BanksSummaryList(
-                                              banks: provider.bankSummaries,
-                                              visibleTotalBalancesForSubCards:
-                                                  visibleTotalBalancesForSubCards),
-                                        )
+                                        provider.accountSummaries.isEmpty
+                                            ? Expanded(
+                                                child: Center(
+                                                  child: Padding(
+                                                    padding:
+                                                        const EdgeInsets.all(
+                                                            24.0),
+                                                    child: Column(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .center,
+                                                      children: [
+                                                        Icon(
+                                                          Icons
+                                                              .account_balance_outlined,
+                                                          size: 64,
+                                                          color:
+                                                              Colors.grey[400],
+                                                        ),
+                                                        const SizedBox(
+                                                            height: 16),
+                                                        Text(
+                                                          "No Bank Accounts Yet",
+                                                          style: TextStyle(
+                                                            fontSize: 18,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                            color: Colors
+                                                                .grey[700],
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                            height: 8),
+                                                        Text(
+                                                          "Tap the + icon to add a new account.",
+                                                          textAlign:
+                                                              TextAlign.center,
+                                                          style: TextStyle(
+                                                            fontSize: 14,
+                                                            color: Colors
+                                                                .grey[600],
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              )
+                                            : Flexible(
+                                                child: BanksSummaryList(
+                                                    banks:
+                                                        provider.bankSummaries,
+                                                    visibleTotalBalancesForSubCards:
+                                                        visibleTotalBalancesForSubCards),
+                                              )
                                       ],
                                     ))
                                 : BankDetail(

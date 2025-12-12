@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:totals/models/sms_pattern.dart';
 
@@ -136,18 +138,193 @@ class SmsConfigService {
   }
 
   Future<List<SmsPattern>> getPatterns() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    // First, try to load from SharedPreferences
+    final List<String>? storedPatterns = prefs.getStringList(_storageKey);
+    if (storedPatterns != null && storedPatterns.isNotEmpty) {
+      try {
+        final patterns = storedPatterns
+            .map((jsonStr) => SmsPattern.fromJson(jsonDecode(jsonStr)))
+            .toList();
+        print(
+            "debug: Loaded ${patterns.length} patterns from SharedPreferences");
+        return patterns;
+      } catch (e) {
+        print("debug: Error parsing stored patterns: $e");
+        // Fall through to fetch from remote
+      }
+    }
+
+    // If not in prefs, try to fetch from remote (only if internet available)
+    final hasInternet = await _hasInternetConnection();
+    if (hasInternet) {
+      try {
+        final patterns = await _fetchRemotePatterns();
+        if (patterns.isNotEmpty) {
+          await savePatterns(patterns);
+          return patterns;
+        }
+      } catch (e) {
+        print("debug: Error fetching remote patterns: $e");
+      }
+    } else {
+      print("debug: No internet connection, cannot fetch remote patterns");
+    }
+
+    // Fallback to default patterns
+    print("debug: Using default patterns as fallback");
+    // Save defaults to prefs for next time
+    await savePatterns(_defaultPatterns);
     return _defaultPatterns;
+  }
+
+  Future<bool> _hasInternetConnection() async {
+    try {
+      final connectivityResult = await Connectivity().checkConnectivity();
+      // Check if we have any connection (mobile, wifi, ethernet, etc.)
+      if (connectivityResult == ConnectivityResult.none) {
+        return false;
+      }
+      // Additional check: try to reach a known server
+      try {
+        final response = await http
+            .get(Uri.parse('https://www.google.com'))
+            .timeout(const Duration(seconds: 3));
+        return response.statusCode == 200;
+      } catch (e) {
+        return false;
+      }
+    } catch (e) {
+      print("debug: Error checking connectivity: $e");
+      return false;
+    }
+  }
+
+  Future<List<SmsPattern>> _fetchRemotePatterns() async {
+    const String url =
+        "https://sms-parsing-visualizer.vercel.app/sms_patterns.json";
+
+    try {
+      final response = await http.get(Uri.parse(url)).timeout(
+            const Duration(seconds: 10),
+          );
+
+      if (response.statusCode == 200) {
+        String body = response.body;
+
+        // Handle JavaScript file that might export JSON
+        // Remove any JavaScript wrapper if present
+        body = body.trim();
+        if (body.startsWith('export') ||
+            body.startsWith('const') ||
+            body.startsWith('var') ||
+            body.startsWith('let')) {
+          // Extract JSON from JS file
+          final jsonMatch =
+              RegExp(r'(\[[\s\S]*\])|(\{[\s\S]*\})').firstMatch(body);
+          if (jsonMatch != null) {
+            body = jsonMatch.group(0)!;
+          }
+        }
+
+        // Parse JSON
+        final dynamic jsonData = jsonDecode(body);
+        List<SmsPattern> patterns = [];
+
+        if (jsonData is List) {
+          patterns = jsonData
+              .map((item) => SmsPattern.fromJson(item as Map<String, dynamic>))
+              .toList();
+        } else if (jsonData is Map && jsonData.containsKey('patterns')) {
+          // Handle case where JSON has a 'patterns' key
+          final patternsList = jsonData['patterns'] as List;
+          patterns = patternsList
+              .map((item) => SmsPattern.fromJson(item as Map<String, dynamic>))
+              .toList();
+        }
+
+        print("debug: Fetched ${patterns.length} patterns from remote");
+        return patterns;
+      } else {
+        print("debug: Remote fetch failed with status ${response.statusCode}");
+        return [];
+      }
+    } catch (e) {
+      print("debug: Exception fetching remote patterns: $e");
+      return [];
+    }
   }
 
   Future<void> savePatterns(List<SmsPattern> patterns) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     List<String> encoded = patterns.map((p) => jsonEncode(p.toJson())).toList();
     await prefs.setStringList(_storageKey, encoded);
+    print("debug: Saved ${patterns.length} patterns to SharedPreferences");
   }
 
-  // Method to force fetch remote config (placeholder)
-  Future<void> syncRemoteConfig() async {
-    // await http.get(...)
-    // await savePatterns(...)
+  // Method to force fetch remote config (background sync)
+  Future<void> syncRemoteConfig({bool showError = false}) async {
+    final hasInternet = await _hasInternetConnection();
+    if (!hasInternet) {
+      print("debug: No internet connection, skipping remote sync");
+      return;
+    }
+
+    try {
+      final patterns = await _fetchRemotePatterns();
+      if (patterns.isNotEmpty) {
+        await savePatterns(patterns);
+        print("debug: Successfully synced remote config");
+      } else {
+        print("debug: Remote sync returned empty patterns");
+      }
+    } catch (e) {
+      print("debug: Error syncing remote config: $e");
+      if (showError) {
+        rethrow;
+      }
+    }
+  }
+
+  // Initialize patterns on app launch
+  // Returns true if internet is needed but not available
+  Future<bool> initializePatterns() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final List<String>? storedPatterns = prefs.getStringList(_storageKey);
+
+    // If patterns exist, do background sync
+    if (storedPatterns != null && storedPatterns.isNotEmpty) {
+      print("debug: Patterns exist, doing background sync");
+      // Background sync (non-blocking)
+      syncRemoteConfig().catchError((e) {
+        print("debug: Background sync failed: $e");
+      });
+      return false; // No internet needed, we have cached patterns
+    }
+
+    // No patterns stored, need to fetch
+    final hasInternet = await _hasInternetConnection();
+    if (!hasInternet) {
+      return true; // Internet needed but not available
+    }
+
+    // Fetch and save patterns
+    try {
+      final patterns = await _fetchRemotePatterns();
+      if (patterns.isNotEmpty) {
+        await savePatterns(patterns);
+        return false; // Success
+      } else {
+        // Fallback to defaults
+        await savePatterns(_defaultPatterns);
+        return false;
+      }
+    } catch (e) {
+      print("debug: Error initializing patterns: $e");
+      // Fallback to defaults
+      await savePatterns(_defaultPatterns);
+      return false;
+    }
   }
 }

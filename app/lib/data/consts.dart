@@ -40,33 +40,23 @@ class AppConstants {
     ),
     Bank(
       id: 3,
-      name: "Cooperative Bank Of Oromia",
-      shortName: "COOP",
+      name: "Bank Of Abyssinia",
+      shortName: "BOA",
       codes: [
-        "COOP",
-        "Cooperative Bank Of Oromia",
+        "BOA",
+        "Bank Of Abyssinia",
       ],
       image: "assets/images/coop.png",
     ),
     Bank(
       id: 4,
-      name: "Global Bank Ethiopia",
-      shortName: "Global",
+      name: "Dashen Bank",
+      shortName: "Dashen",
       codes: [
-        "Global Bank",
-        "Global",
+        "Dashen",
+        "Dashen Bank",
       ],
       image: "assets/images/global.png",
-    ),
-    Bank(
-      id: 5,
-      name: "Oromia International Bank",
-      shortName: "OIB",
-      codes: [
-        "OIB",
-        "Oromia International Bank",
-      ],
-      image: "assets/images/oib.png",
     ),
     Bank(
       id: 6,
