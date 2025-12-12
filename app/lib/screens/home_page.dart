@@ -12,6 +12,7 @@ import 'package:totals/widgets/total_balance_card.dart';
 import 'package:totals/widgets/debug_sms_dialog.dart';
 import 'package:totals/widgets/debug_transactions_dialog.dart';
 import 'package:totals/widgets/failed_parse_dialog.dart';
+import 'package:totals/widgets/clear_database_dialog.dart';
 import 'package:totals/services/sms_config_service.dart';
 
 class HomePage extends StatefulWidget {
@@ -167,20 +168,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     return tabs;
   }
 
-  Future<void> _selectDate(BuildContext context) async {
-    var provider = Provider.of<TransactionProvider>(context, listen: false);
-    DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: provider.selectedDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-
-    if (picked != null) {
-      provider.updateDate(picked);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     if (!_isAuthenticated) {
@@ -264,9 +251,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         onPressed: () => showDebugTransactionsDialog(context),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.calendar_month_outlined,
+                        icon: const Icon(Icons.delete_outline,
                             color: Color(0xFF8DA1E1), size: 25),
-                        onPressed: () => _selectDate(context),
+                        onPressed: () => showClearDatabaseDialog(context),
+                        tooltip: "Clear Database",
                       ),
                       IconButton(
                         icon: const Icon(Icons.message_outlined,

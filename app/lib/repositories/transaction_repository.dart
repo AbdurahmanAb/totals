@@ -1,39 +1,78 @@
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite/sqflite.dart' hide Transaction;
+import 'package:totals/database/database_helper.dart';
 import 'package:totals/models/transaction.dart';
 
 class TransactionRepository {
-  static const String key = "transactions";
-
   Future<List<Transaction>> getTransactions() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs
-        .reload(); // Reload to get latest data from other isolates/background
-    final List<String>? transactionsList = prefs.getStringList(key);
+    final db = await DatabaseHelper.instance.database;
+    final List<Map<String, dynamic>> maps =
+        await db.query('transactions', orderBy: 'time DESC, id DESC');
 
-    if (transactionsList == null) return [];
-
-    return transactionsList
-        .map((item) => Transaction.fromJson(jsonDecode(item)))
-        .toList();
+    return maps.map<Transaction>((map) {
+      return Transaction.fromJson({
+        'amount': map['amount'],
+        'reference': map['reference'],
+        'creditor': map['creditor'],
+        'time': map['time'],
+        'status': map['status'],
+        'currentBalance': map['currentBalance'],
+        'bankId': map['bankId'],
+        'type': map['type'],
+        'transactionLink': map['transactionLink'],
+        'accountNumber': map['accountNumber'],
+      });
+    }).toList();
   }
 
   Future<void> saveTransaction(Transaction transaction) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.reload();
+    final db = await DatabaseHelper.instance.database;
 
-    // Note: This is an expensive operation as we read all, append, and write all.
-    // In a real database this would be an INSERT.
-    final List<String> existing = prefs.getStringList(key) ?? [];
-    existing.add(jsonEncode(transaction.toJson()));
-
-    await prefs.setStringList(key, existing);
+    await db.insert(
+      'transactions',
+      {
+        'amount': transaction.amount,
+        'reference': transaction.reference,
+        'creditor': transaction.creditor,
+        'time': transaction.time,
+        'status': transaction.status,
+        'currentBalance': transaction.currentBalance,
+        'bankId': transaction.bankId,
+        'type': transaction.type,
+        'transactionLink': transaction.transactionLink,
+        'accountNumber': transaction.accountNumber,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   Future<void> saveAllTransactions(List<Transaction> transactions) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final List<String> encoded =
-        transactions.map((t) => jsonEncode(t.toJson())).toList();
-    await prefs.setStringList(key, encoded);
+    final db = await DatabaseHelper.instance.database;
+    final batch = db.batch();
+
+    for (var transaction in transactions) {
+      batch.insert(
+        'transactions',
+        {
+          'amount': transaction.amount,
+          'reference': transaction.reference,
+          'creditor': transaction.creditor,
+          'time': transaction.time,
+          'status': transaction.status,
+          'currentBalance': transaction.currentBalance,
+          'bankId': transaction.bankId,
+          'type': transaction.type,
+          'transactionLink': transaction.transactionLink,
+          'accountNumber': transaction.accountNumber,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+
+    await batch.commit(noResult: true);
+  }
+
+  Future<void> clearAll() async {
+    final db = await DatabaseHelper.instance.database;
+    await db.delete('transactions');
   }
 }

@@ -1,30 +1,37 @@
-import 'dart:convert';
-
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:totals/database/database_helper.dart';
 import 'package:totals/models/failed_parse.dart';
 
 class FailedParseRepository {
-  static const String key = "failed_parses_v1";
-
   Future<List<FailedParse>> getAll() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.reload();
-    final List<String>? raw = prefs.getStringList(key);
-    if (raw == null) return [];
-    return raw.map((item) => FailedParse.fromJson(jsonDecode(item))).toList();
+    final db = await DatabaseHelper.instance.database;
+    final List<Map<String, dynamic>> maps =
+        await db.query('failed_parses', orderBy: 'timestamp DESC');
+
+    return maps.map((map) {
+      return FailedParse.fromJson({
+        'address': map['address'],
+        'body': map['body'],
+        'reason': map['reason'],
+        'timestamp': map['timestamp'],
+      });
+    }).toList();
   }
 
   Future<void> add(FailedParse item) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.reload();
-    final List<String> existing = prefs.getStringList(key) ?? [];
-    existing.add(jsonEncode(item.toJson()));
-    await prefs.setStringList(key, existing);
+    final db = await DatabaseHelper.instance.database;
+    await db.insert(
+      'failed_parses',
+      {
+        'address': item.address,
+        'body': item.body,
+        'reason': item.reason,
+        'timestamp': item.timestamp,
+      },
+    );
   }
 
   Future<void> clear() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.reload();
-    await prefs.remove(key);
+    final db = await DatabaseHelper.instance.database;
+    await db.delete('failed_parses');
   }
 }

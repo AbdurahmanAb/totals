@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:totals/providers/transaction_provider.dart';
 import 'package:totals/screens/home_page.dart';
+import 'package:totals/database/migration_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize database and migrate if needed
+  // await MigrationHelper.migrateIfNeeded();
 
   runApp(MyApp());
 }

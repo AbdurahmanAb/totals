@@ -1,11 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:totals/database/database_helper.dart';
 import 'package:totals/models/sms_pattern.dart';
 
 class SmsConfigService {
-  static const String _storageKey = "sms_patterns_config_v3";
   static final List<SmsPattern> _defaultPatterns = [
     // --- CBE Patterns ---
     // Try to capture account number if possible (1*****5345)
@@ -138,17 +137,22 @@ class SmsConfigService {
   }
 
   Future<List<SmsPattern>> getPatterns() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final db = await DatabaseHelper.instance.database;
 
-    // First, try to load from SharedPreferences
-    final List<String>? storedPatterns = prefs.getStringList(_storageKey);
-    if (storedPatterns != null && storedPatterns.isNotEmpty) {
+    // First, try to load from database
+    final List<Map<String, dynamic>> maps = await db.query('sms_patterns');
+    if (maps.isNotEmpty) {
       try {
-        final patterns = storedPatterns
-            .map((jsonStr) => SmsPattern.fromJson(jsonDecode(jsonStr)))
-            .toList();
-        print(
-            "debug: Loaded ${patterns.length} patterns from SharedPreferences");
+        final patterns = maps.map((map) {
+          return SmsPattern.fromJson({
+            'bankId': map['bankId'],
+            'senderId': map['senderId'],
+            'regex': map['regex'],
+            'type': map['type'],
+            'description': map['description'],
+          });
+        }).toList();
+        print("debug: Loaded ${patterns.length} patterns from database");
         return patterns;
       } catch (e) {
         print("debug: Error parsing stored patterns: $e");
@@ -156,7 +160,7 @@ class SmsConfigService {
       }
     }
 
-    // If not in prefs, try to fetch from remote (only if internet available)
+    // If not in database, try to fetch from remote (only if internet available)
     final hasInternet = await _hasInternetConnection();
     if (hasInternet) {
       try {
@@ -174,7 +178,7 @@ class SmsConfigService {
 
     // Fallback to default patterns
     print("debug: Using default patterns as fallback");
-    // Save defaults to prefs for next time
+    // Save defaults to database for next time
     await savePatterns(_defaultPatterns);
     return _defaultPatterns;
   }
@@ -257,10 +261,23 @@ class SmsConfigService {
   }
 
   Future<void> savePatterns(List<SmsPattern> patterns) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    List<String> encoded = patterns.map((p) => jsonEncode(p.toJson())).toList();
-    await prefs.setStringList(_storageKey, encoded);
-    print("debug: Saved ${patterns.length} patterns to SharedPreferences");
+    final db = await DatabaseHelper.instance.database;
+
+    // Clear existing patterns and insert new ones
+    await db.delete('sms_patterns');
+
+    final batch = db.batch();
+    for (var pattern in patterns) {
+      batch.insert('sms_patterns', {
+        'bankId': pattern.bankId,
+        'senderId': pattern.senderId,
+        'regex': pattern.regex,
+        'type': pattern.type,
+        'description': pattern.description,
+      });
+    }
+    await batch.commit(noResult: true);
+    print("debug: Saved ${patterns.length} patterns to database");
   }
 
   // Method to force fetch remote config (background sync)
@@ -290,11 +307,11 @@ class SmsConfigService {
   // Initialize patterns on app launch
   // Returns true if internet is needed but not available
   Future<bool> initializePatterns() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final List<String>? storedPatterns = prefs.getStringList(_storageKey);
+    final db = await DatabaseHelper.instance.database;
+    final List<Map<String, dynamic>> maps = await db.query('sms_patterns');
 
     // If patterns exist, do background sync
-    if (storedPatterns != null && storedPatterns.isNotEmpty) {
+    if (maps.isNotEmpty) {
       print("debug: Patterns exist, doing background sync");
       // Background sync (non-blocking)
       syncRemoteConfig().catchError((e) {

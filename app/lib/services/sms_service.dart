@@ -6,7 +6,6 @@ import 'package:totals/repositories/transaction_repository.dart';
 import 'package:totals/repositories/account_repository.dart';
 import 'package:totals/models/transaction.dart';
 import 'package:totals/models/account.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:totals/models/failed_parse.dart';
 import 'package:totals/repositories/failed_parse_repository.dart';
 
@@ -41,8 +40,6 @@ onBackgroundMessage(SmsMessage message) async {
 
 class SmsService {
   final Telephony _telephony = Telephony.instance;
-  final TransactionRepository _transactionRepo = TransactionRepository();
-  final AccountRepository _accountRepo = AccountRepository();
 
   // Callback to notify UI to refresh
   Function()? onMessageReceived;
@@ -123,8 +120,8 @@ class SmsService {
   }
 
   // Static processing logic so it can be used by background handler too.
-  static Future<void> processMessage(
-      String messageBody, String senderAddress) async {
+  static Future<void> processMessage(String messageBody, String senderAddress,
+      {DateTime? messageDate}) async {
     print("debug: Processing message: $messageBody");
 
     Bank? bank = getRelevantBank(senderAddress);
@@ -157,10 +154,15 @@ class SmsService {
 
     print("debug: Extracted details: $details");
 
-    // 3. Check duplicate transaction
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.reload();
+    // Use message date if provided, otherwise use extracted time or current time
+    if (messageDate != null && details['time'] == null) {
+      details['time'] = messageDate.toIso8601String();
+    } else if (messageDate != null && details['time'] != null) {
+      // If pattern extracted a time but we have message date, prefer message date for historical accuracy
+      details['time'] = messageDate.toIso8601String();
+    }
 
+    // 3. Check duplicate transaction
     TransactionRepository txRepo = TransactionRepository();
     List<Transaction> existingTx = await txRepo.getTransactions();
 

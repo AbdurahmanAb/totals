@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:totals/components/custom_inputfield.dart';
 import 'package:totals/data/consts.dart';
 import 'package:totals/widgets/banks_list.dart';
-import 'package:another_telephony/telephony.dart';
+import 'package:totals/widgets/account_loading_dialog.dart';
+import 'package:totals/services/account_registration_service.dart';
 
 class RegisterAccountForm extends StatefulWidget {
   final void Function() onSubmit;
@@ -23,75 +24,28 @@ class _RegisterAccountFormState extends State<RegisterAccountForm> {
 
   void _submitForm() async {
     if (_formKey.currentState!.validate()) {
-      // Comment out account saving logic
-      // SharedPreferences prefs = await SharedPreferences.getInstance();
-      // var bankAccounts = prefs.getStringList("accounts") ?? [];
-      // if (bankAccounts.isNotEmpty) {
-      //   for (var i = 0; i < bankAccounts.length; i++) {
-      //     var account = jsonDecode(bankAccounts[i]);
-      //     if (account['accountNumber'] == _accountNumber.text) {
-      //       return;
-      //     }
-      //   }
-      // }
-      // bankAccounts.add(jsonEncode({
-      //   "accountNumber": _accountNumber.text,
-      //   "accountHolderName": _accountHolderName.text,
-      //   "bank": selected_bank,
-      //   "balance": 0
-      // }));
-      // await prefs.setStringList("accounts", bankAccounts);
-      // widget.onSubmit();
-      // Navigator.pop(context);
-
-      // Get bank codes using the bank id
-      final bank = AppConstants.banks.firstWhere(
-        (element) => element.id == selected_bank,
-      );
-      final bankCodes = bank.codes;
-      print("debug: Bank codes for bank ${bank.name}: $bankCodes");
-
-      // Get all messages received from that bank
-      final Telephony telephony = Telephony.instance;
-      final smsList = await telephony.getInboxSms(
-        columns: const [
-          SmsColumn.ADDRESS,
-          SmsColumn.BODY,
-          SmsColumn.DATE,
-        ],
-        filter: SmsFilter.where(SmsColumn.ADDRESS).equals(bankCodes.first),
-        sortOrder: [
-          OrderBy(SmsColumn.DATE, sort: Sort.DESC),
-        ],
+      // Show loading dialog with progress
+      final result = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AccountLoadingDialog(
+          task: (onProgress) async {
+            final service = AccountRegistrationService();
+            await service.registerAccount(
+              accountNumber: _accountNumber.text,
+              accountHolderName: _accountHolderName.text,
+              bankId: selected_bank,
+              syncPreviousSms: syncPreviousSms,
+              onProgress: onProgress,
+            );
+          },
+        ),
       );
 
-      // Filter messages by bank codes
-      final bankMessages = smsList.where((message) {
-        if (message.address == null) return false;
-        final address = message.address!.toLowerCase();
-        return bankCodes.any((code) => address.contains(code.toLowerCase()));
-      }).toList();
-
-      // Get last 5 messages (most recent, since sorted DESC)
-      final lastFive = bankMessages.length > 5
-          ? bankMessages.take(5).toList()
-          : bankMessages;
-
-      // Print the last 5 messages
-      print("debug: Last 5 messages from bank ${bank.name}:");
-      for (var i = 0; i < lastFive.length; i++) {
-        final msg = lastFive[i];
-        final date = msg.date != null
-            ? DateTime.fromMillisecondsSinceEpoch(msg.date!)
-            : null;
-        print("debug: [${i + 1}] From: ${msg.address ?? 'Unknown'}");
-        print("debug:     Date: ${date ?? 'Unknown'}");
-        print("debug:     Body: ${msg.body ?? 'No body'}");
-        print("debug:     ---");
+      if (result == true && mounted) {
+        widget.onSubmit();
+        Navigator.pop(context);
       }
-      // Log the length of the messages
-      print(
-          "debug: Total messages from bank ${bank.name}: ${bankMessages.length}");
     }
   }
 
