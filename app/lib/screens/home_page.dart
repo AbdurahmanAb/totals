@@ -456,6 +456,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                   .where((e) => e.bankId == tabId)
                                   .toList(),
                             ),
+                      const SizedBox(height: 100), // Padding for floating nav
                     ],
                   ),
                 ),
@@ -499,6 +500,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         }
 
         return Scaffold(
+          extendBody: true,
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           appBar: _bottomNavIndex == 0
               ? AppBar(
@@ -623,11 +625,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               setState(() {
                 _bottomNavIndex = index;
               });
-              _mainPageController.animateToPage(
-                index,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-              );
+              _mainPageController.jumpToPage(index);
             },
           ),
         );

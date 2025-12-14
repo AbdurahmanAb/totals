@@ -104,64 +104,64 @@ class _WebPageState extends State<WebPage> with SingleTickerProviderStateMixin {
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text(
-                  'Web Dashboard',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-              ),
-              Text(
-                'Share your financial data on local network',
+    return SafeArea(
+      bottom: false,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                'Web Dashboard',
                 style: TextStyle(
-                  fontSize: 14,
-                  color: colorScheme.onSurfaceVariant,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
                 ),
               ),
-              const SizedBox(height: 24),
+            ),
+            Text(
+              'Share your financial data on local network',
+              style: TextStyle(
+                fontSize: 14,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 24),
 
-              // Server Status Card
-              _buildServerStatusCard(colorScheme, isDark),
+            // Server Status Card
+            _buildServerStatusCard(colorScheme, isDark),
 
+            const SizedBox(height: 16),
+
+            // URL Card (only when running)
+            if (_serverService.isRunning) ...[
+              _buildUrlCard(colorScheme, isDark),
               const SizedBox(height: 16),
-
-              // URL Card (only when running)
-              if (_serverService.isRunning) ...[
-                _buildUrlCard(colorScheme, isDark),
-                const SizedBox(height: 16),
-              ],
-
-              // Network Info Card
-              _buildNetworkInfoCard(colorScheme, isDark),
-
-              const SizedBox(height: 16),
-
-              // Error Message
-              if (_errorMessage != null) _buildErrorCard(colorScheme),
-
-              const SizedBox(height: 16),
-
-              // Instructions Card
-              _buildInstructionsCard(colorScheme, isDark),
-
-              const SizedBox(height: 16),
-
-              // API Endpoints Card
-              _buildApiEndpointsCard(colorScheme, isDark),
             ],
-          ),
+
+            // Network Info Card
+            _buildNetworkInfoCard(colorScheme, isDark),
+
+            const SizedBox(height: 16),
+
+            // Error Message
+            if (_errorMessage != null) _buildErrorCard(colorScheme),
+
+            const SizedBox(height: 16),
+
+            // Instructions Card
+            _buildInstructionsCard(colorScheme, isDark),
+
+            const SizedBox(height: 16),
+
+            // API Endpoints Card
+            _buildApiEndpointsCard(colorScheme, isDark),
+            const SizedBox(height: 100),
+          ],
         ),
       ),
     );
