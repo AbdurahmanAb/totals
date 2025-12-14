@@ -228,192 +228,70 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     ),
                   );
                 },
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 12),
-                      tabId == 0
-                          ? SizedBox(
-                              height: MediaQuery.of(context).size.height * 0.8,
-                              child: Column(
-                                children: [
-                                  TotalBalanceCard(
-                                    summary: provider.summary,
-                                    showBalance: showTotalBalance,
-                                    onToggleBalance: () {
-                                      setState(() {
-                                        showTotalBalance = !showTotalBalance;
-                                        visibleTotalBalancesForSubCards =
-                                            visibleTotalBalancesForSubCards
-                                                    .isEmpty
-                                                ? provider.bankSummaries
-                                                    .map((e) =>
-                                                        e.bankId.toString())
-                                                    .toList()
-                                                : [];
-                                      });
-                                    },
-                                  ),
-                                  const SizedBox(height: 12),
-                                  provider.accountSummaries.isEmpty
-                                      ? Expanded(
-                                          child: Center(
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.all(24.0),
-                                              child: Column(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  Icon(
-                                                    Icons
-                                                        .account_balance_outlined,
-                                                    size: 64,
-                                                    color: Theme.of(context)
-                                                        .colorScheme
-                                                        .onSurfaceVariant,
-                                                  ),
-                                                  const SizedBox(height: 24),
-                                                  Text(
-                                                    "No Bank Accounts Yet",
-                                                    style: TextStyle(
-                                                      fontSize: 20,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: Theme.of(context)
-                                                          .colorScheme
-                                                          .onSurface,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                  Text(
-                                                    "Get started by adding your first bank account",
-                                                    textAlign: TextAlign.center,
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      color: Theme.of(context)
-                                                          .colorScheme
-                                                          .onSurfaceVariant,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 32),
-                                                  SizedBox(
-                                                    width: 200,
-                                                    child: GestureDetector(
-                                                      onTap: () {
-                                                        showModalBottomSheet(
-                                                          isScrollControlled:
-                                                              true,
-                                                          context: context,
-                                                          builder: (context) {
-                                                            return ClipRRect(
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          15),
-                                                              child: Container(
-                                                                padding: const EdgeInsets
-                                                                    .symmetric(
-                                                                    vertical:
-                                                                        20,
-                                                                    horizontal:
-                                                                        20),
-                                                                height: MediaQuery.of(
-                                                                            context)
-                                                                        .size
-                                                                        .height *
-                                                                    0.83,
-                                                                child:
-                                                                    SingleChildScrollView(
-                                                                  child:
-                                                                      RegisterAccountForm(
-                                                                    onSubmit:
-                                                                        () {
-                                                                      provider
-                                                                          .loadData();
-                                                                    },
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                            );
-                                                          },
-                                                        );
-                                                      },
-                                                      child: Container(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                                vertical: 16,
-                                                                horizontal: 24),
-                                                        decoration:
-                                                            BoxDecoration(
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(16),
-                                                          color:
-                                                              Theme.of(context)
-                                                                  .colorScheme
-                                                                  .primary,
-                                                          boxShadow: [
-                                                            BoxShadow(
-                                                              color: Theme.of(
-                                                                      context)
-                                                                  .colorScheme
-                                                                  .primary
-                                                                  .withOpacity(
-                                                                      0.3),
-                                                              blurRadius: 12,
-                                                              offset:
-                                                                  const Offset(
-                                                                      0, 4),
-                                                            )
-                                                          ],
-                                                        ),
-                                                        child: Row(
-                                                          mainAxisAlignment:
-                                                              MainAxisAlignment
-                                                                  .center,
-                                                          mainAxisSize:
-                                                              MainAxisSize.min,
-                                                          children: [
-                                                            Icon(
-                                                              Icons.add_rounded,
-                                                              color:
-                                                                  Colors.white,
-                                                              size: 24,
-                                                            ),
-                                                            const SizedBox(
-                                                                width: 8),
-                                                            Text(
-                                                              "Add Account",
-                                                              style: TextStyle(
-                                                                fontSize: 16,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                                color: Colors
-                                                                    .white,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
+                child: tabId == 0
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 12),
+                          TotalBalanceCard(
+                            summary: provider.summary,
+                            showBalance: showTotalBalance,
+                            onToggleBalance: () {
+                              setState(() {
+                                showTotalBalance = !showTotalBalance;
+                                visibleTotalBalancesForSubCards =
+                                    visibleTotalBalancesForSubCards.isEmpty
+                                        ? provider.bankSummaries
+                                            .map((e) => e.bankId.toString())
+                                            .toList()
+                                        : [];
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          Expanded(
+                            child: provider.accountSummaries.isEmpty
+                                ? Center(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(24.0),
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.account_balance_outlined,
+                                            size: 64,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
+                                          const SizedBox(height: 24),
+                                          Text(
+                                            "No Bank Accounts Yet",
+                                            style: TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface,
                                             ),
                                           ),
-                                        )
-                                      : Flexible(
-                                          child: BanksSummaryList(
-                                              banks: provider.bankSummaries,
-                                              visibleTotalBalancesForSubCards:
-                                                  visibleTotalBalancesForSubCards,
-                                              onBankTap: changeTab,
-                                              onAddAccount: () {
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            "Get started by adding your first bank account",
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 32),
+                                          SizedBox(
+                                            width: 200,
+                                            child: GestureDetector(
+                                              onTap: () {
                                                 showModalBottomSheet(
                                                   isScrollControlled: true,
                                                   context: context,
@@ -423,11 +301,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                                           BorderRadius.circular(
                                                               15),
                                                       child: Container(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                                vertical: 20,
-                                                                horizontal: 20),
+                                                        padding: const EdgeInsets
+                                                            .symmetric(
+                                                            vertical: 20,
+                                                            horizontal: 20),
                                                         height: MediaQuery.of(
                                                                     context)
                                                                 .size
@@ -447,20 +324,105 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                                     );
                                                   },
                                                 );
-                                              }),
-                                        )
-                                ],
-                              ))
-                          : BankDetail(
-                              bankId: tabId,
-                              accountSummaries: provider.accountSummaries
-                                  .where((e) => e.bankId == tabId)
-                                  .toList(),
-                            ),
-                      const SizedBox(height: 100), // Padding for floating nav
-                    ],
-                  ),
-                ),
+                                              },
+                                              child: Container(
+                                                padding: const EdgeInsets
+                                                    .symmetric(
+                                                    vertical: 16,
+                                                    horizontal: 24),
+                                                decoration: BoxDecoration(
+                                                  borderRadius:
+                                                      BorderRadius.circular(16),
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .primary,
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Theme.of(context)
+                                                          .colorScheme
+                                                          .primary
+                                                          .withOpacity(0.3),
+                                                      blurRadius: 12,
+                                                      offset:
+                                                          const Offset(0, 4),
+                                                    )
+                                                  ],
+                                                ),
+                                                child: Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      Icons.add_rounded,
+                                                      color: Colors.white,
+                                                      size: 24,
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      "Add Account",
+                                                      style: TextStyle(
+                                                        fontSize: 16,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  )
+                                : BanksSummaryList(
+                                    banks: provider.bankSummaries,
+                                    visibleTotalBalancesForSubCards:
+                                        visibleTotalBalancesForSubCards,
+                                    onBankTap: changeTab,
+                                    onAddAccount: () {
+                                      showModalBottomSheet(
+                                        isScrollControlled: true,
+                                        context: context,
+                                        builder: (context) {
+                                          return ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(15),
+                                            child: Container(
+                                              padding: const EdgeInsets
+                                                  .symmetric(
+                                                  vertical: 20,
+                                                  horizontal: 20),
+                                              height: MediaQuery.of(context)
+                                                      .size
+                                                      .height *
+                                                  0.83,
+                                              child: SingleChildScrollView(
+                                                child: RegisterAccountForm(
+                                                  onSubmit: () {
+                                                    provider.loadData();
+                                                  },
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      );
+                                    },
+                                  ),
+                          ),
+                          const SizedBox(height: 100), // Padding for floating nav
+                        ],
+                      )
+                    : BankDetail(
+                        bankId: tabId,
+                        accountSummaries: provider.accountSummaries
+                            .where((e) => e.bankId == tabId)
+                            .toList(),
+                      ),
               );
             },
           ),
