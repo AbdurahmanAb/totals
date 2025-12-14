@@ -9,6 +9,10 @@ import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart';
 import 'package:shelf_static/shelf_static.dart';
 import 'network_utils.dart';
+import 'handlers/accounts_handler.dart';
+import 'handlers/transactions_handler.dart';
+import 'handlers/summary_handler.dart';
+import 'handlers/banks_handler.dart';
 
 class ServerService {
   HttpServer? _server;
@@ -66,6 +70,17 @@ class ServerService {
     }
 
     final router = Router();
+
+    // Mount API handlers
+    final accountsHandler = AccountsHandler();
+    final transactionsHandler = TransactionsHandler();
+    final summaryHandler = SummaryHandler();
+    final banksHandler = BanksHandler();
+
+    router.mount('/api/accounts', accountsHandler.router.call);
+    router.mount('/api/transactions', transactionsHandler.router.call);
+    router.mount('/api/summary', summaryHandler.router.call);
+    router.mount('/api/banks', banksHandler.router.call);
 
     // Health check endpoint
     router.get('/health', (Request request) {

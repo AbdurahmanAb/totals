@@ -8,7 +8,7 @@ class PatternParser {
     String cleanBody = messageBody.trim();
 
     for (var pattern in patterns) {
-      print("debug: Pattern Regex: ${pattern.regex}");
+      print("debug: Pattern Regex: ${[pattern.bankId]} ${pattern.regex}");
 
       // 2. Try to match regex
       try {
