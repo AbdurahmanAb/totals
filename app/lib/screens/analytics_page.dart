@@ -13,7 +13,7 @@ class AnalyticsPage extends StatefulWidget {
   State<AnalyticsPage> createState() => _AnalyticsPageState();
 }
 
-class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProviderStateMixin {
+class _AnalyticsPageState extends State<AnalyticsPage> {
   String? _selectedCard; // null, 'Income', or 'Expense'
   String _selectedPeriod = 'Month'; // 'Week', 'Month', 'Year'
   int? _selectedBankFilter; // null for 'All', or bankId
@@ -22,147 +22,109 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
   String _chartType = 'P&L Calendar'; // 'Line Chart', 'Bar Chart', 'Pie Chart', 'P&L Calendar'
   int _timeFrameOffset = 0; // 0 = current, -1 = previous, +1 = next
   
-  late AnimationController _slideAnimationController;
-  late Animation<Offset> _slideAnimation;
-  bool _isNavigating = false;
+  late PageController _timeFramePageController;
   bool _leftButtonPressed = false;
   bool _rightButtonPressed = false;
-  double _dragOffset = 0.0;
-  Widget? _previousChartWidget;
+  bool _isTransitioning = false;
 
   @override
   void initState() {
     super.initState();
-    _slideAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _slideAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideAnimationController,
-      curve: Curves.easeInOut,
-    ));
-    // Initialize animation at zero
-    _slideAnimationController.value = 0.0;
-    _dragOffset = 0.0;
+    // Initialize PageController at page 1 (middle page = current time frame)
+    _timeFramePageController = PageController(initialPage: 1);
   }
 
   @override
   void dispose() {
-    _slideAnimationController.dispose();
+    _timeFramePageController.dispose();
     super.dispose();
   }
 
-  DateTime _getBaseDate() {
+  DateTime _getBaseDate([int? offset]) {
     final now = DateTime.now();
-    if (_timeFrameOffset == 0) return now;
+    final effectiveOffset = offset ?? _timeFrameOffset;
+    if (effectiveOffset == 0) return now;
     
     if (_selectedPeriod == 'Week') {
-      return now.add(Duration(days: _timeFrameOffset * 7));
+      return now.add(Duration(days: effectiveOffset * 7));
     } else if (_selectedPeriod == 'Month') {
-      return DateTime(now.year, now.month + _timeFrameOffset, now.day);
+      return DateTime(now.year, now.month + effectiveOffset, now.day);
     } else { // Year
-      return DateTime(now.year + _timeFrameOffset, now.month, now.day);
+      return DateTime(now.year + effectiveOffset, now.month, now.day);
     }
   }
 
-  Future<void> _navigateTimeFrame(bool forward) async {
-    if (_isNavigating) return;
+  void _navigateTimeFrame(bool forward) {
+    if (!_timeFramePageController.hasClients) return;
     
-    setState(() {
-      _isNavigating = true;
-      _dragOffset = 0.0; // Reset drag offset
-    });
-
-    // Set animation direction for slide out
-    _slideAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: Offset(forward ? -1.0 : 1.0, 0),
-    ).animate(CurvedAnimation(
-      parent: _slideAnimationController,
-      curve: Curves.easeInOut,
-    ));
-
-    // Start slide out animation
-    await _slideAnimationController.forward();
-
-    // Update the offset (this will trigger rebuild with new data)
-    setState(() {
-      if (forward) {
-        _timeFrameOffset++;
-      } else {
-        _timeFrameOffset--;
-      }
-    });
-
-    // Wait a frame for the new chart to be built
-    await Future.delayed(const Duration(milliseconds: 16));
-
-    // Reset animation for slide in
-    _slideAnimation = Tween<Offset>(
-      begin: Offset(forward ? 1.0 : -1.0, 0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideAnimationController,
-      curve: Curves.easeInOut,
-    ));
-
-    // Reset controller and slide in
-    _slideAnimationController.reset();
-    await _slideAnimationController.forward();
-
-    setState(() {
-      _isNavigating = false;
-      _dragOffset = 0.0; // Ensure drag offset is reset
-      _previousChartWidget = null; // Clear cached chart after transition
-    });
+    if (forward) {
+      // Swipe to next page (right)
+      _timeFramePageController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    } else {
+      // Swipe to previous page (left)
+      _timeFramePageController.previousPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
   }
 
-  Future<void> _resetTimeFrame() async {
-    if (_isNavigating || _timeFrameOffset == 0) return;
+  void _resetTimeFrame() {
+    if (_timeFrameOffset == 0 || !_timeFramePageController.hasClients) return;
     
-    final offsetDirection = _timeFrameOffset > 0 ? 1.0 : -1.0;
-    
-    setState(() {
-      _isNavigating = true;
-      _dragOffset = 0.0; // Reset drag offset
-    });
-
-    // Set animation direction
-    _slideAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: Offset(-offsetDirection, 0),
-    ).animate(CurvedAnimation(
-      parent: _slideAnimationController,
-      curve: Curves.easeInOut,
-    ));
-
-    // Start slide out animation
-    await _slideAnimationController.forward();
-
-    // Update the offset
+    // Jump to middle page (current time frame)
+    _timeFramePageController.jumpToPage(1);
     setState(() {
       _timeFrameOffset = 0;
     });
+  }
 
-    // Reset animation for slide in
-    _slideAnimation = Tween<Offset>(
-      begin: Offset(offsetDirection, 0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideAnimationController,
-      curve: Curves.easeInOut,
-    ));
-
-    // Reset controller and slide in
-    _slideAnimationController.reset();
-    await _slideAnimationController.forward();
-
-    setState(() {
-      _isNavigating = false;
-      _dragOffset = 0.0; // Ensure drag offset is reset
+  void _onTimeFramePageChanged(int page) {
+    // Page 0 = previous, Page 1 = current, Page 2 = next
+    // Only update if we're not already transitioning
+    if (_isTransitioning) return;
+    
+    // Mark as transitioning to prevent multiple updates
+    _isTransitioning = true;
+    
+    // Defer state update until after animation completes (300ms) to prevent freezing
+    // This allows the PageView animation to complete smoothly before triggering expensive rebuilds
+    Future.delayed(const Duration(milliseconds: 350), () {
+      if (!mounted) {
+        _isTransitioning = false;
+        return;
+      }
+      
+      if (page == 0) {
+        // Swiped to previous
+        setState(() {
+          _timeFrameOffset--;
+          _isTransitioning = false;
+        });
+        // Reset to middle page after a short delay to allow preloading
+        Future.delayed(const Duration(milliseconds: 50), () {
+          if (mounted && _timeFramePageController.hasClients) {
+            _timeFramePageController.jumpToPage(1);
+          }
+        });
+      } else if (page == 2) {
+        // Swiped to next
+        setState(() {
+          _timeFrameOffset++;
+          _isTransitioning = false;
+        });
+        // Reset to middle page after a short delay to allow preloading
+        Future.delayed(const Duration(milliseconds: 50), () {
+          if (mounted && _timeFramePageController.hasClients) {
+            _timeFramePageController.jumpToPage(1);
+          }
+        });
+      } else {
+        _isTransitioning = false;
+      }
     });
   }
 
@@ -302,8 +264,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
                     ),
                     const SizedBox(height: 12),
 
-                    // Chart
-                    _buildChart(chartData, maxValue),
+                    // Chart with PageView for time frame navigation
+                    _buildChartWithPageView(chartData, maxValue),
                     const SizedBox(height: 24),
 
                     // Transactions List Header with Sort By
@@ -503,6 +465,10 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
                 _selectedPeriod = period;
                 _timeFrameOffset = 0; // Reset to current time frame when period changes
               });
+              // Reset to middle page when period changes
+              if (_timeFramePageController.hasClients) {
+                _timeFramePageController.jumpToPage(1);
+              }
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
@@ -649,42 +615,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
     }
   }
 
-  Widget _buildChart(List<ChartDataPoint> data, double maxValue) {
-    if (data.isEmpty) {
-      return Container(
-        height: 250,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Center(
-          child: Text(
-            'No data available',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-      );
-    }
-
-    Widget chartWidget;
-    switch (_chartType) {
-      case 'Bar Chart':
-        chartWidget = _buildBarChart(data, maxValue);
-        break;
-      case 'Pie Chart':
-        chartWidget = _buildPieChart(data);
-        break;
-      case 'P&L Calendar':
-        chartWidget = _buildTradingPnL(data, maxValue);
-        break;
-      case 'Line Chart':
-      default:
-        chartWidget = _buildLineChart(data, maxValue);
-        break;
-    }
-
+  Widget _buildChartWithPageView(List<ChartDataPoint> data, double maxValue) {
     return Column(
       children: [
         // Navigation buttons at the top
@@ -819,54 +750,34 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
           ],
         ),
         const SizedBox(height: 12),
-        // Chart widget with swipe gesture and slide animation
-        GestureDetector(
-          onHorizontalDragStart: (details) {
-            if (_isNavigating) return;
-            _dragOffset = 0.0;
-            // Cache current chart before dragging
-            if (_previousChartWidget == null) {
-              _previousChartWidget = chartWidget;
-            }
-            setState(() {});
-          },
-          onHorizontalDragUpdate: (details) {
-            if (_isNavigating) return;
-            final screenWidth = MediaQuery.of(context).size.width;
-            _dragOffset = details.primaryDelta! / screenWidth;
-            setState(() {});
-          },
-          onHorizontalDragEnd: (details) {
-            if (_isNavigating) return;
-            final velocity = details.primaryVelocity;
-            if (velocity != null) {
-              // Swipe right (drag left, positive velocity) = go to previous time frame
-              if (velocity > 200) {
-                _navigateTimeFrame(false);
-              }
-              // Swipe left (drag right, negative velocity) = go to next time frame
-              else if (velocity < -200) {
-                _navigateTimeFrame(true);
-              } else {
-                // Reset drag offset if swipe wasn't strong enough
-                _dragOffset = 0.0;
-                setState(() {});
-              }
-            } else {
-              _dragOffset = 0.0;
-              setState(() {});
-            }
-          },
-          onHorizontalDragCancel: () {
-            _dragOffset = 0.0;
-            setState(() {});
-          },
-          child: ClipRect(
-            child: SlideTransition(
-              position: _dragOffset != 0.0
-                  ? AlwaysStoppedAnimation(Offset(_dragOffset, 0))
-                  : (_isNavigating ? _slideAnimation : AlwaysStoppedAnimation(Offset.zero)),
-              child: chartWidget,
+        // Chart widget with PageView for swipe navigation
+        // Use RepaintBoundary to isolate chart from rest of page rebuilds
+        RepaintBoundary(
+          child: SizedBox(
+            height: _getChartHeight(),
+            child: PageView.builder(
+              controller: _timeFramePageController,
+              onPageChanged: _onTimeFramePageChanged,
+              itemCount: 3, // Previous, Current, Next
+              itemBuilder: (context, pageIndex) {
+                // Calculate the offset for this page
+                // Page 0 = previous (offset -1), Page 1 = current (offset 0), Page 2 = next (offset +1)
+                final pageOffset = pageIndex - 1;
+                final effectiveOffset = _timeFrameOffset + pageOffset;
+                
+                // Get chart data for this time frame
+                final pageData = _getChartDataForOffset(data, effectiveOffset);
+                final pageMaxValue = pageData.isEmpty 
+                    ? 5000.0 
+                    : (pageData.map((e) => e.value).reduce((a, b) => a > b ? a : b) * 1.2).clamp(100.0, double.infinity);
+                
+                // Get base date for this offset
+                final pageBaseDate = _getBaseDate(effectiveOffset);
+                
+                return RepaintBoundary(
+                  child: _buildChart(pageData, pageMaxValue, pageBaseDate),
+                );
+              },
             ),
           ),
         ),
@@ -874,7 +785,132 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
     );
   }
 
-  Widget _buildLineChart(List<ChartDataPoint> data, double maxValue) {
+  Widget _buildChart(List<ChartDataPoint> data, double maxValue, DateTime baseDate) {
+    if (data.isEmpty) {
+      return Container(
+        height: _getChartHeight(),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Center(
+          child: Text(
+            'No data available',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      );
+    }
+
+    Widget chartWidget;
+    switch (_chartType) {
+      case 'Bar Chart':
+        chartWidget = _buildBarChart(data, maxValue, baseDate);
+        break;
+      case 'Pie Chart':
+        chartWidget = _buildPieChart(data);
+        break;
+      case 'P&L Calendar':
+        chartWidget = _buildTradingPnL(data, maxValue, baseDate);
+        break;
+      case 'Line Chart':
+      default:
+        chartWidget = _buildLineChart(data, maxValue, baseDate);
+        break;
+    }
+
+    return chartWidget;
+  }
+
+  double _getChartHeight() {
+    switch (_chartType) {
+      case 'P&L Calendar':
+        return 350;
+      default:
+        return 280;
+    }
+  }
+
+  List<ChartDataPoint> _getChartDataForOffset(List<ChartDataPoint> baseData, int offset) {
+    // Get the base date for this offset
+    final baseDate = _getBaseDate(offset);
+    
+    // Get all transactions from provider
+    final allTransactions = Provider.of<TransactionProvider>(context, listen: false).allTransactions;
+    
+    // Filter transactions based on selected card, period, and bank
+    final filteredTransactions = allTransactions.where((t) {
+      // Filter by selected card (Income/Expense)
+      bool matchesCard = true;
+      if (_selectedCard == 'Income') {
+        matchesCard = t.type == 'CREDIT';
+      } else if (_selectedCard == 'Expense') {
+        matchesCard = t.type == 'DEBIT';
+      }
+      
+      // Filter by bank if selected
+      bool matchesBank = _selectedBankFilter == null || t.bankId == _selectedBankFilter;
+      
+      // Filter by account if selected
+      bool matchesAccount = true;
+      if (_selectedAccountFilter != null && _selectedBankFilter != null) {
+        final accounts = Provider.of<TransactionProvider>(context, listen: false).accountSummaries;
+        final account = accounts.firstWhere(
+          (a) => a.accountNumber == _selectedAccountFilter && a.bankId == _selectedBankFilter,
+          orElse: () => accounts.firstWhere((a) => a.bankId == _selectedBankFilter, orElse: () => accounts.first),
+        );
+        
+        if (account.bankId == 1 && t.accountNumber != null && account.accountNumber.length >= 4) {
+          matchesAccount = t.accountNumber!.substring(t.accountNumber!.length - 4) ==
+              account.accountNumber.substring(account.accountNumber.length - 4);
+        } else if (account.bankId == 4 && t.accountNumber != null && account.accountNumber.length >= 3) {
+          matchesAccount = t.accountNumber!.substring(t.accountNumber!.length - 3) ==
+              account.accountNumber.substring(account.accountNumber.length - 3);
+        } else if (account.bankId == 3 && t.accountNumber != null && account.accountNumber.length >= 2) {
+          matchesAccount = t.accountNumber!.substring(t.accountNumber!.length - 2) ==
+              account.accountNumber.substring(account.accountNumber.length - 2);
+        } else {
+          matchesAccount = t.accountNumber == account.accountNumber;
+        }
+      }
+      
+      // Filter by period with offset
+      bool matchesPeriod = true;
+      if (t.time != null) {
+        try {
+          final transactionDate = DateTime.parse(t.time!);
+          if (_selectedPeriod == 'Week') {
+            int daysSinceMonday = (baseDate.weekday - 1) % 7;
+            final weekStart = DateTime(baseDate.year, baseDate.month, baseDate.day).subtract(Duration(days: daysSinceMonday));
+            matchesPeriod = transactionDate.isAfter(weekStart.subtract(const Duration(days: 1))) &&
+                           transactionDate.isBefore(baseDate.add(const Duration(days: 1)));
+          } else if (_selectedPeriod == 'Month') {
+            matchesPeriod = transactionDate.year == baseDate.year && transactionDate.month == baseDate.month;
+          } else if (_selectedPeriod == 'Year') {
+            matchesPeriod = transactionDate.year == baseDate.year;
+          }
+        } catch (e) {
+          matchesPeriod = false;
+        }
+      } else {
+        matchesPeriod = false;
+      }
+      
+      return matchesCard && matchesBank && matchesAccount && matchesPeriod;
+    }).toList();
+    
+    return _getChartData(
+      filteredTransactions, 
+      _selectedPeriod, 
+      _selectedBankFilter, 
+      _selectedAccountFilter,
+      baseDate: baseDate,
+    );
+  }
+
+  Widget _buildLineChart(List<ChartDataPoint> data, double maxValue, DateTime baseDate) {
     // Find the highest point and current day
     int highestIndex = 0;
     double highestValue = 0;
@@ -885,8 +921,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
       }
     }
 
-    // Find current day index based on actual current date
-    int currentDayIndex = _getCurrentDayIndex(data);
+    // Find current day index based on base date
+    int currentDayIndex = _getCurrentDayIndex(data, baseDate);
 
     return Stack(
       children: [
@@ -924,7 +960,12 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
                 getTitlesWidget: (value, meta) {
                   final index = value.toInt();
                   if (index >= 0 && index < data.length) {
-                    final isCurrentDay = _timeFrameOffset == 0 && index == currentDayIndex;
+                    // Only highlight if this is the current time frame (offset 0) and matches today
+                    final isCurrentDay = _timeFrameOffset == 0 && 
+                                       baseDate.year == DateTime.now().year &&
+                                       baseDate.month == DateTime.now().month &&
+                                       baseDate.day == DateTime.now().day &&
+                                       index == currentDayIndex;
                     return Padding(
                       padding: const EdgeInsets.only(top: 8),
                         child: Container(
@@ -1012,7 +1053,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
     );
   }
 
-  Widget _buildBarChart(List<ChartDataPoint> data, double maxValue) {
+  Widget _buildBarChart(List<ChartDataPoint> data, double maxValue, DateTime baseDate) {
     if (data.isEmpty) {
       return Container(
         height: 280,
@@ -1094,7 +1135,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
     ].reduce((a, b) => a > b ? a : b);
     final chartMaxValue = (maxBarValue * 1.2).clamp(100.0, double.infinity);
     
-    int currentDayIndex = _getCurrentDayIndex(data);
+    int currentDayIndex = _getCurrentDayIndex(data, baseDate);
     
     return Container(
       height: 280,
@@ -1126,7 +1167,12 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
                 getTitlesWidget: (value, meta) {
                   final index = value.toInt();
                   if (index >= 0 && index < data.length) {
-                    final isCurrentDay = _timeFrameOffset == 0 && index == currentDayIndex;
+                    // Only highlight if this is the current time frame (offset 0) and matches today
+                    final isCurrentDay = _timeFrameOffset == 0 && 
+                                       baseDate.year == DateTime.now().year &&
+                                       baseDate.month == DateTime.now().month &&
+                                       baseDate.day == DateTime.now().day &&
+                                       index == currentDayIndex;
                     return Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Container(
@@ -1178,7 +1224,12 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
           borderData: FlBorderData(show: false),
           barGroups: data.asMap().entries.map((entry) {
             final index = entry.key;
-            final isCurrentDay = _timeFrameOffset == 0 && index == currentDayIndex;
+            // Only highlight if this is the current time frame (offset 0) and matches today
+            final isCurrentDay = _timeFrameOffset == 0 && 
+                               baseDate.year == DateTime.now().year &&
+                               baseDate.month == DateTime.now().month &&
+                               baseDate.day == DateTime.now().day &&
+                               index == currentDayIndex;
             return BarChartGroupData(
               x: index,
               barRods: [
@@ -1256,9 +1307,9 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
     );
   }
 
-  Widget _buildTradingPnL(List<ChartDataPoint> data, double maxValue) {
+  Widget _buildTradingPnL(List<ChartDataPoint> data, double maxValue, DateTime baseDate) {
     final allTransactions = Provider.of<TransactionProvider>(context, listen: false).allTransactions;
-    final now = _getBaseDate();
+    final now = baseDate;
     
     // Filter by bank, account, and income/expense card
     var filtered = allTransactions;
@@ -1495,7 +1546,11 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
                         final date = dates[cellIndex];
                         final monthName = DateFormat('MMM').format(date);
                         final pnl = dailyPnL[date] ?? 0.0;
-                        final isCurrentMonth = _timeFrameOffset == 0 && date.year == DateTime.now().year && date.month == DateTime.now().month;
+                        // Only highlight if baseDate matches today and the date matches today
+                        final isCurrentMonth = baseDate.year == DateTime.now().year && 
+                                             baseDate.month == DateTime.now().month &&
+                                             date.year == DateTime.now().year && 
+                                             date.month == DateTime.now().month;
                         final intensity = maxPnL > 0 ? (pnl.abs() / maxPnL).clamp(0.0, 1.0) : 0.0;
                         final isPositive = pnl >= 0;
                         final hasTransactions = pnl != 0.0;
@@ -1562,7 +1617,10 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
                           final date = dates[cellIndexWithOffset];
                           final dayNumber = date.day;
                           final pnl = dailyPnL[date] ?? 0.0;
-                          final isToday = _timeFrameOffset == 0 && 
+                          // Only highlight if baseDate matches today and the date matches today
+                          final isToday = baseDate.year == DateTime.now().year &&
+                                         baseDate.month == DateTime.now().month &&
+                                         baseDate.day == DateTime.now().day &&
                                          date.year == DateTime.now().year &&
                                          date.month == DateTime.now().month &&
                                          date.day == DateTime.now().day;
@@ -1628,7 +1686,10 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
                           
                           final date = dates[dayNumber - 1];
                           final pnl = dailyPnL[date] ?? 0.0;
-                          final isToday = _timeFrameOffset == 0 && 
+                          // Only highlight if baseDate matches today and the date matches today
+                          final isToday = baseDate.year == DateTime.now().year &&
+                                         baseDate.month == DateTime.now().month &&
+                                         baseDate.day == DateTime.now().day &&
                                          date.year == DateTime.now().year &&
                                          date.month == DateTime.now().month &&
                                          date.day == DateTime.now().day;
@@ -2050,8 +2111,9 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
     List<Transaction> transactions,
     String period,
     int? bankFilter,
-    String? accountFilter,
-  ) {
+    String? accountFilter, {
+    DateTime? baseDate,
+  }) {
     // Filter by bank if selected (transactions are already filtered by type)
     var filteredTransactions = transactions;
     if (bankFilter != null) {
@@ -2059,18 +2121,19 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
     }
     
     // Filter by account if selected (account filtering is already done in main filter, but keep for consistency)
+    final effectiveBaseDate = baseDate ?? _getBaseDate();
 
     if (period == 'Week') {
-      return _getWeeklyData(filteredTransactions);
+      return _getWeeklyData(filteredTransactions, effectiveBaseDate);
     } else if (period == 'Month') {
-      return _getMonthlyData(filteredTransactions);
+      return _getMonthlyData(filteredTransactions, effectiveBaseDate);
     } else {
-      return _getYearlyData(filteredTransactions);
+      return _getYearlyData(filteredTransactions, effectiveBaseDate);
     }
   }
 
-  List<ChartDataPoint> _getWeeklyData(List<Transaction> transactions) {
-    final now = _getBaseDate();
+  List<ChartDataPoint> _getWeeklyData(List<Transaction> transactions, DateTime baseDate) {
+    final now = baseDate;
     // Get the start of the week (Monday)
     int daysSinceMonday = (now.weekday - 1) % 7;
     final weekStart = DateTime(now.year, now.month, now.day).subtract(Duration(days: daysSinceMonday));
@@ -2099,8 +2162,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
     });
   }
 
-  List<ChartDataPoint> _getMonthlyData(List<Transaction> transactions) {
-    final now = _getBaseDate();
+  List<ChartDataPoint> _getMonthlyData(List<Transaction> transactions, DateTime baseDate) {
+    final now = baseDate;
     final monthStart = DateTime(now.year, now.month, 1);
     final weeksInMonth = ((now.difference(monthStart).inDays) / 7).ceil();
     
@@ -2128,8 +2191,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
     });
   }
 
-  List<ChartDataPoint> _getYearlyData(List<Transaction> transactions) {
-    final now = _getBaseDate();
+  List<ChartDataPoint> _getYearlyData(List<Transaction> transactions, DateTime baseDate) {
+    final now = baseDate;
     final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     
     return List.generate(12, (index) {
@@ -2156,8 +2219,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> with SingleTickerProvider
     return NumberFormat('#,##0.00').format(amount);
   }
 
-  int _getCurrentDayIndex(List<ChartDataPoint> data) {
-    final now = _getBaseDate();
+  int _getCurrentDayIndex(List<ChartDataPoint> data, DateTime baseDate) {
+    final now = baseDate;
     
     if (_selectedPeriod == 'Week') {
       // Find the index that matches today's date

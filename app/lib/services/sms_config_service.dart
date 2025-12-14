@@ -132,12 +132,12 @@ class SmsConfigService {
 
   String cleanSmsText(String text) {
     try {
-      String jsonString = jsonEncode(text);
-      String cleaned = jsonDecode(jsonString);
-      cleaned = cleaned.replaceAll('\r', ' ');
-      cleaned = cleaned.replaceAll(RegExp(r'\s+'), ' ');
-      cleaned = cleaned.replaceAll(RegExp(r'\.\s*([A-Z])'), ' \$1');
-      return cleaned.trim();
+      // String jsonString = jsonEncode(text);
+      // String cleaned = jsonDecode(jsonString);
+      // cleaned = cleaned.replaceAll('\r', ' ');
+      // cleaned = cleaned.replaceAll(RegExp(r'\s+'), ' ');
+      // cleaned = cleaned.replaceAll(RegExp(r'\.\s*([A-Z])'), ' \$1');
+      return text.trim();
     } catch (e) {
       print("debug: JSON sanitization failed: $e");
       return text;
