@@ -361,7 +361,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                         });
                       },
                     ),
-                    if (_selectedBankFilter != null) const SizedBox(height: 24),
+                    if (_selectedBankFilter != null) const SizedBox(height: 16),
+                    const SizedBox(height: 24),
 
                     _isLoadingData 
                         ? const LoadingIncomeExpenseCards()

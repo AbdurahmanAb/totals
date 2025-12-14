@@ -18,16 +18,24 @@ class TimePeriodSelector extends StatelessWidget {
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [
-            Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-            Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.15),
+            Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+            Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.2),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+            spreadRadius: 0,
+          ),
+          BoxShadow(
             color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
+            blurRadius: 4,
             offset: const Offset(0, 2),
           ),
         ],
@@ -48,20 +56,40 @@ class TimePeriodSelector extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: isSelected
                     ? LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                         colors: [
                           Theme.of(context).colorScheme.primary,
                           Theme.of(context).colorScheme.primary.withOpacity(0.8),
                         ],
                       )
-                    : null,
+                    : LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Colors.transparent,
+                          Colors.transparent,
+                        ],
+                      ),
                 color: isSelected ? null : Colors.transparent,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-                          blurRadius: 8,
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                          spreadRadius: 2,
+                        ),
+                        BoxShadow(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                          blurRadius: 4,
                           offset: const Offset(0, 2),
+                        ),
+                        BoxShadow(
+                          color: Colors.white.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, -2),
                         ),
                       ]
                     : null,

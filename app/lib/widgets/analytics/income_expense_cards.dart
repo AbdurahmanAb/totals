@@ -163,9 +163,28 @@ class _IncomeExpenseCard extends StatelessWidget {
         curve: Curves.easeInOut,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected
-              ? (isIncome ? Colors.green : Theme.of(context).colorScheme.error)
-              : Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+          gradient: isSelected
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: isIncome
+                      ? [
+                          Colors.green.shade600,
+                          Colors.green.shade700,
+                        ]
+                      : [
+                          Theme.of(context).colorScheme.error,
+                          Theme.of(context).colorScheme.error.withOpacity(0.8),
+                        ],
+                )
+              : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+                    Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.2),
+                  ],
+                ),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected
@@ -173,6 +192,30 @@ class _IncomeExpenseCard extends StatelessWidget {
                 : color.withOpacity(0.3),
             width: isSelected ? 0 : 1,
           ),
+          boxShadow: [
+            // Main shadow for depth
+            BoxShadow(
+              color: isSelected
+                  ? (isIncome ? Colors.green.withOpacity(0.4) : Theme.of(context).colorScheme.error.withOpacity(0.4))
+                  : Colors.black.withOpacity(0.1),
+              blurRadius: isSelected ? 12 : 8,
+              offset: Offset(0, isSelected ? 6 : 4),
+              spreadRadius: isSelected ? 2 : 0,
+            ),
+            // Secondary shadow for more depth
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+            // Inner shadow effect (simulated with a subtle top highlight)
+            if (isSelected)
+              BoxShadow(
+                color: Colors.white.withOpacity(0.1),
+                blurRadius: 4,
+                offset: const Offset(0, -2),
+              ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
