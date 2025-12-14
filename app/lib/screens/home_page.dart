@@ -412,6 +412,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                               banks: provider.bankSummaries,
                                               visibleTotalBalancesForSubCards:
                                                   visibleTotalBalancesForSubCards,
+                                              onBankTap: changeTab,
                                               onAddAccount: () {
                                                 showModalBottomSheet(
                                                   isScrollControlled: true,
