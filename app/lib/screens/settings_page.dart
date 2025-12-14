@@ -81,7 +81,7 @@ class _SettingsPageState extends State<SettingsPage> {
           builder: (context) => AlertDialog(
             title: const Text('Import Data'),
             content: const Text(
-              'This will replace all existing data. Are you sure you want to continue?',
+              'This will add the imported data to your existing data. Duplicates will be skipped. Continue?',
             ),
             actions: [
               TextButton(
