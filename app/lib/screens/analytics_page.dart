@@ -901,10 +901,43 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     final allTransactions = Provider.of<TransactionProvider>(context, listen: false).allTransactions;
     final now = DateTime.now();
     
-    // Filter by bank and account
+    // Filter by bank, account, and income/expense card
     var filtered = allTransactions;
+    
+    // Filter by selected card (Income/Expense)
+    if (_selectedCard == 'Income') {
+      filtered = filtered.where((t) => t.type == 'CREDIT').toList();
+    } else if (_selectedCard == 'Expense') {
+      filtered = filtered.where((t) => t.type == 'DEBIT').toList();
+    }
+    
+    // Filter by bank
     if (_selectedBankFilter != null) {
       filtered = filtered.where((t) => t.bankId == _selectedBankFilter).toList();
+    }
+    
+    // Filter by account if selected
+    if (_selectedAccountFilter != null && _selectedBankFilter != null) {
+      final accounts = Provider.of<TransactionProvider>(context, listen: false).accountSummaries;
+      final account = accounts.firstWhere(
+        (a) => a.accountNumber == _selectedAccountFilter && a.bankId == _selectedBankFilter,
+        orElse: () => accounts.firstWhere((a) => a.bankId == _selectedBankFilter, orElse: () => accounts.first),
+      );
+      
+      filtered = filtered.where((t) {
+        if (account.bankId == 1 && t.accountNumber != null && account.accountNumber.length >= 4) {
+          return t.accountNumber!.substring(t.accountNumber!.length - 4) ==
+              account.accountNumber.substring(account.accountNumber.length - 4);
+        } else if (account.bankId == 4 && t.accountNumber != null && account.accountNumber.length >= 3) {
+          return t.accountNumber!.substring(t.accountNumber!.length - 3) ==
+              account.accountNumber.substring(account.accountNumber.length - 3);
+        } else if (account.bankId == 3 && t.accountNumber != null && account.accountNumber.length >= 2) {
+          return t.accountNumber!.substring(t.accountNumber!.length - 2) ==
+              account.accountNumber.substring(account.accountNumber.length - 2);
+        } else {
+          return t.accountNumber == account.accountNumber;
+        }
+      }).toList();
     }
     
     // Get the current month
@@ -932,14 +965,26 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         }
       }).toList();
       
-      final income = dayTransactions
-          .where((t) => t.type == 'CREDIT')
-          .fold(0.0, (sum, t) => sum + t.amount);
-      final expenses = dayTransactions
-          .where((t) => t.type == 'DEBIT')
-          .fold(0.0, (sum, t) => sum + t.amount);
+      // Calculate P&L based on selected filter
+      double pnl = 0.0;
+      if (_selectedCard == 'Income') {
+        // Only show income (positive values)
+        pnl = dayTransactions.fold(0.0, (sum, t) => sum + t.amount);
+      } else if (_selectedCard == 'Expense') {
+        // Only show expenses (negative values)
+        pnl = -dayTransactions.fold(0.0, (sum, t) => sum + t.amount);
+      } else {
+        // Show net P&L (income - expenses)
+        final income = dayTransactions
+            .where((t) => t.type == 'CREDIT')
+            .fold(0.0, (sum, t) => sum + t.amount);
+        final expenses = dayTransactions
+            .where((t) => t.type == 'DEBIT')
+            .fold(0.0, (sum, t) => sum + t.amount);
+        pnl = income - expenses;
+      }
       
-      dailyPnL[date] = income - expenses;
+      dailyPnL[date] = pnl;
     }
     
     final maxPnL = dailyPnL.values.isEmpty
