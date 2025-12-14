@@ -53,8 +53,9 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFEEEEEE)),
-                      color: Colors.white,
+                      border: Border.all(
+                          color: Theme.of(context).dividerColor),
+                      color: Theme.of(context).cardColor,
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.max,
@@ -112,12 +113,13 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                                                                   account
                                                                       .bankId)
                                                           .name,
-                                                      style: const TextStyle(
+                                                      style: TextStyle(
                                                         fontSize: 14,
                                                         fontWeight:
                                                             FontWeight.bold,
-                                                        color:
-                                                            Color(0xFF444750),
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .onSurface,
                                                         overflow: TextOverflow
                                                             .ellipsis,
                                                       )),
@@ -133,16 +135,18 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                                               ]),
                                           Text(
                                             account.accountNumber,
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontSize: 14,
-                                              color: Colors.grey,
+                                              color: Theme.of(context)
+                                                  .colorScheme.onSurfaceVariant,
                                             ),
                                           ),
                                           Text(
                                             account.accountHolderName,
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontSize: 14,
-                                              color: Colors.grey,
+                                              color: Theme.of(context)
+                                                  .colorScheme.onSurfaceVariant,
                                             ),
                                           ),
                                           if (syncStatus != null)
@@ -160,7 +164,9 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                                                       valueColor:
                                                           AlwaysStoppedAnimation<
                                                               Color>(
-                                                        const Color(0xFF294EC3),
+                                                        Theme.of(context)
+                                                            .colorScheme
+                                                            .primary,
                                                       ),
                                                     ),
                                                   ),
@@ -169,8 +175,8 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                                                     syncStatus,
                                                     style: TextStyle(
                                                       fontSize: 12,
-                                                      color: const Color(
-                                                          0xFF294EC3),
+                                                      color: Theme.of(context)
+                                                          .colorScheme.primary,
                                                       fontStyle:
                                                           FontStyle.italic,
                                                     ),
@@ -192,10 +198,11 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                                                               account.balance) +
                                                           " ETB"
                                                       : "******",
-                                                  style: const TextStyle(
+                                                  style: TextStyle(
                                                     fontSize: 14,
                                                     fontWeight: FontWeight.bold,
-                                                    color: Color(0xFF444750),
+                                                    color: Theme.of(context)
+                                                        .colorScheme.onSurface,
                                                   )),
                                               SizedBox(
                                                 width: 20,
@@ -226,7 +233,9 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                                                         ? Icons.visibility_off
                                                         : Icons
                                                             .remove_red_eye_outlined,
-                                                    color: Color(0xFFBDC0CA),
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurfaceVariant,
                                                   ))
                                             ],
                                           ),
@@ -269,12 +278,13 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                                   Container(
                                     alignment: Alignment
                                         .centerLeft, // Aligns text to the left
-                                    child: const Text(
+                                    child: Text(
                                       "Account Details",
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.bold,
-                                        color: Color(0xFF444750),
+                                        color: Theme.of(context)
+                                            .colorScheme.onSurface,
                                       ),
                                     ),
                                   ),
@@ -288,7 +298,8 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                                       Text(
                                         "Total Transactions",
                                         style: TextStyle(
-                                          color: Color(0xFF181F2A),
+                                          color: Theme.of(context)
+                                              .colorScheme.onSurface,
                                           fontSize: 13,
                                         ),
                                       ),
@@ -296,9 +307,11 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                                           account.totalTransactions
                                               .toInt()
                                               .toString(),
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 13,
+                                            color: Theme.of(context)
+                                                .colorScheme.onSurface,
                                           )),
                                     ],
                                   ),
@@ -310,7 +323,8 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                                       Text(
                                         "Total Credit",
                                         style: TextStyle(
-                                          color: Color(0xFF181F2A),
+                                          color: Theme.of(context)
+                                              .colorScheme.onSurface,
                                           fontSize: 13,
                                         ),
                                       ),
@@ -318,10 +332,11 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                                           formatNumberWithComma(
                                                   account.totalCredit) +
                                               " ETB",
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 13,
-                                            color: Color(0xFF181F2A),
+                                            color: Theme.of(context)
+                                                .colorScheme.onSurface,
                                           )),
                                     ],
                                   ),
@@ -333,7 +348,8 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                                       Text(
                                         "Total Debit",
                                         style: TextStyle(
-                                          color: Color(0xFF181F2A),
+                                          color: Theme.of(context)
+                                              .colorScheme.onSurface,
                                           fontSize: 13,
                                         ),
                                       ),
@@ -341,9 +357,10 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                                           formatNumberWithComma(
                                                   account.totalDebit) +
                                               " ETB",
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontWeight: FontWeight.bold,
-                                            color: Color(0xFF181F2A),
+                                            color: Theme.of(context)
+                                                .colorScheme.onSurface,
                                             fontSize: 13,
                                           )),
                                     ],
@@ -351,7 +368,7 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                                   const SizedBox(height: 10),
                                   Container(
                                     height: 1,
-                                    color: Colors.grey[300],
+                                    color: Theme.of(context).dividerColor,
                                   ),
                                   const SizedBox(height: 10),
                                   Row(
@@ -361,7 +378,8 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                                       Text(
                                         "Total Balance",
                                         style: TextStyle(
-                                          color: Color(0xFF181F2A),
+                                          color: Theme.of(context)
+                                              .colorScheme.onSurface,
                                           fontSize: 13,
                                         ),
                                       ),
@@ -369,10 +387,11 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                                           formatNumberWithComma(
                                                   account.balance) +
                                               " ETB",
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 13,
-                                            color: Color(0xFF181F2A),
+                                            color: Theme.of(context)
+                                                .colorScheme.onSurface,
                                           )),
                                     ],
                                   ),
@@ -397,7 +416,8 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                                       style: ElevatedButton.styleFrom(
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 16, vertical: 12),
-                                        backgroundColor: Color(0xffF1F4FF),
+                                        backgroundColor:
+                                            Theme.of(context).colorScheme.surfaceVariant,
                                         elevation: 0,
                                         shape: RoundedRectangleBorder(
                                           borderRadius:
@@ -405,11 +425,12 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                                         ),
                                         alignment: Alignment.center,
                                       ),
-                                      child: const Text(
+                                      child: Text(
                                         "Show Transaction History",
                                         textAlign: TextAlign.center,
                                         style: TextStyle(
-                                          color: Color(0xFF444750),
+                                          color: Theme.of(context)
+                                              .colorScheme.onSurface,
                                           fontSize: 14,
                                         ),
                                       ),
@@ -438,12 +459,13 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: const Text(
+          backgroundColor: Theme.of(context).cardColor,
+          title: Text(
             'Delete Account',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF444750),
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           content: Column(
@@ -454,14 +476,14 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                 'Are you sure you want to delete this account?',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Color(0xFF444750),
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Color(0xFFF5F5F5),
+                  color: Theme.of(context).colorScheme.surfaceVariant,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(
@@ -472,7 +494,7 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: Color(0xFF444750),
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -481,7 +503,7 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: Color(0xFF444750),
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -490,7 +512,7 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: Color(0xFF444750),
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                   ],
@@ -510,10 +532,10 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text(
+              child: Text(
                 'Cancel',
                 style: TextStyle(
-                  color: Color(0xFF444750),
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ),

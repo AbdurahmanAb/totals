@@ -17,9 +17,10 @@ class HomeTabs extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: Colors.grey, width: 0.5),
+          bottom: BorderSide(
+              color: Theme.of(context).dividerColor, width: 0.5),
         ),
       ),
       child: SingleChildScrollView(
@@ -33,7 +34,7 @@ class HomeTabs extends StatelessWidget {
                   border: Border(
                     bottom: BorderSide(
                         color: activeTab == tabs[index]
-                            ? Color(0xFF294EC3)
+                            ? Theme.of(context).colorScheme.primary
                             : Colors.transparent,
                         width: activeTab == tabs[index] ? 2 : 0),
                   ),
@@ -42,9 +43,9 @@ class HomeTabs extends StatelessWidget {
                   onPressed: () => onChangeTab(tabs[index]),
                   style: TextButton.styleFrom(
                     foregroundColor: activeTab == tabs[index]
-                        ? Color(0xFF294EC3)
-                        : Color(0xFF444750),
-                    textStyle: TextStyle(fontSize: 14),
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
+                    textStyle: const TextStyle(fontSize: 14),
                   ),
                   child: Text(tabs[index] == 0
                       ? "Summary"

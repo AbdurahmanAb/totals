@@ -50,8 +50,9 @@ class _BanksSummaryListState extends State<BanksSummaryList> {
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
-                        color: Colors.white,
-                        border: Border.all(color: const Color(0xFFEEEEEE)),
+                        color: Theme.of(context).cardColor,
+                        border: Border.all(
+                            color: Theme.of(context).dividerColor),
                       ),
                       child: Column(children: [
                         Row(
@@ -105,9 +106,10 @@ class _BanksSummaryListState extends State<BanksSummaryList> {
                                       ]),
                                   Text(
                                     bank.accountCount.toString() + ' accounts',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 14,
-                                      color: Colors.grey,
+                                      color: Theme.of(context)
+                                          .colorScheme.onSurfaceVariant,
                                     ),
                                   ),
                                   if (isSyncing && syncStatus != null)
@@ -122,7 +124,8 @@ class _BanksSummaryListState extends State<BanksSummaryList> {
                                               strokeWidth: 2,
                                               valueColor:
                                                   AlwaysStoppedAnimation<Color>(
-                                                Color(0xFF294EC3),
+                                                Theme.of(context)
+                                                    .colorScheme.primary,
                                               ),
                                             ),
                                           ),
@@ -132,7 +135,8 @@ class _BanksSummaryListState extends State<BanksSummaryList> {
                                               syncStatus,
                                               style: TextStyle(
                                                 fontSize: 12,
-                                                color: Color(0xFF294EC3),
+                                                color: Theme.of(context)
+                                                    .colorScheme.primary,
                                               ),
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -151,9 +155,11 @@ class _BanksSummaryListState extends State<BanksSummaryList> {
                                                         bank.totalBalance)) +
                                                     " ETB"
                                                 : "*" * 5,
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontSize: 14,
                                               fontWeight: FontWeight.bold,
+                                              color: Theme.of(context)
+                                                  .colorScheme.onSurface,
                                             ),
                                             overflow: TextOverflow.ellipsis),
                                       ),
@@ -185,7 +191,8 @@ class _BanksSummaryListState extends State<BanksSummaryList> {
                                                         bank.bankId.toString())
                                                 ? Icons.visibility_off
                                                 : Icons.remove_red_eye_outlined,
-                                            color: Color(0xFFBDC0CA),
+                                            color: Theme.of(context)
+                                                .colorScheme.onSurfaceVariant,
                                           ))
                                     ],
                                   )
@@ -207,15 +214,18 @@ class _BanksSummaryListState extends State<BanksSummaryList> {
                                       Text(
                                         "Total Credit",
                                         style: TextStyle(
-                                          color: Colors.black,
+                                          color: Theme.of(context)
+                                              .colorScheme.onSurface,
                                           fontSize: 13,
                                         ),
                                       ),
                                       Text(
                                           "${formatNumberWithComma(bank.totalCredit).toString()} ETB",
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 13,
+                                            color: Theme.of(context)
+                                                .colorScheme.onSurface,
                                           )),
                                     ],
                                   ),
@@ -226,18 +236,21 @@ class _BanksSummaryListState extends State<BanksSummaryList> {
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
                                     children: [
-                                      const Text(
+                                      Text(
                                         "Total Debit",
                                         style: TextStyle(
-                                          color: Colors.black,
+                                          color: Theme.of(context)
+                                              .colorScheme.onSurface,
                                           fontSize: 13,
                                         ),
                                       ),
                                       Text(
                                           "${formatNumberWithComma(bank.totalDebit).toString()} ETB",
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 13,
+                                            color: Theme.of(context)
+                                                .colorScheme.onSurface,
                                           )),
                                     ],
                                   ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:totals/providers/transaction_provider.dart';
+import 'package:totals/providers/theme_provider.dart';
 import 'package:totals/services/sms_service.dart';
 import 'package:totals/widgets/auth_page.dart';
 import 'package:totals/widgets/home_tabs.dart';
@@ -183,7 +184,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         }
 
         return Scaffold(
-          backgroundColor: const Color(0xffF1F4FF),
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           floatingActionButton: SizedBox(
             width: 65,
             height: 65,
@@ -221,7 +222,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             ),
           ),
           appBar: AppBar(
-              backgroundColor: const Color(0xffF1F4FF),
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
               toolbarHeight: 60,
               scrolledUnderElevation: 0,
               elevation: 0,
@@ -246,30 +247,49 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.list_alt,
-                            color: Color(0xFF8DA1E1), size: 25),
+                        icon: Icon(Icons.list_alt,
+                            color: Theme.of(context).iconTheme.color, size: 25),
                         onPressed: () => showDebugTransactionsDialog(context),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.delete_outline,
-                            color: Color(0xFF8DA1E1), size: 25),
+                        icon: Icon(Icons.delete_outline,
+                            color: Theme.of(context).iconTheme.color, size: 25),
                         onPressed: () => showClearDatabaseDialog(context),
                         tooltip: "Clear Database",
                       ),
                       IconButton(
-                        icon: const Icon(Icons.message_outlined,
-                            color: Color(0xFF8DA1E1), size: 25),
+                        icon: Icon(Icons.message_outlined,
+                            color: Theme.of(context).iconTheme.color, size: 25),
                         onPressed: () => showDebugSmsDialog(context),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.error_outline,
-                            color: Color(0xFF8DA1E1), size: 25),
+                        icon: Icon(Icons.error_outline,
+                            color: Theme.of(context).iconTheme.color, size: 25),
                         onPressed: () => showFailedParseDialog(context),
                         tooltip: "View Failed Parsings",
                       ),
+                      Consumer<ThemeProvider>(
+                        builder: (context, themeProvider, child) {
+                          return IconButton(
+                            icon: Icon(
+                              themeProvider.themeMode == ThemeMode.dark
+                                  ? Icons.light_mode
+                                  : Icons.dark_mode,
+                              color: Theme.of(context).iconTheme.color,
+                              size: 25,
+                            ),
+                            onPressed: () {
+                              themeProvider.toggleTheme();
+                            },
+                            tooltip: themeProvider.themeMode == ThemeMode.dark
+                                ? "Switch to Light Mode"
+                                : "Switch to Dark Mode",
+                          );
+                        },
+                      ),
                       IconButton(
-                        icon: const Icon(Icons.lock_outline,
-                            color: Color(0xFF8DA1E1), size: 25),
+                        icon: Icon(Icons.lock_outline,
+                            color: Theme.of(context).iconTheme.color, size: 25),
                         onPressed: () {
                           setState(() {
                             _isAuthenticated = false;
