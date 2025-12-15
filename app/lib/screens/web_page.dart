@@ -433,7 +433,7 @@ class _WebPageState extends State<WebPage> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Open this link on any device connected to the same WiFi network',
+                            'Open this link on any device after connecting them to your hotspot',
                             style: TextStyle(
                               color: isDark
                                   ? primaryColor.withOpacity(0.9)

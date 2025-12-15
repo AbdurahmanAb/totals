@@ -36,6 +36,14 @@ class _RegisterAccountFormState extends State<RegisterAccountForm> {
 
   void _submitForm() async {
     if (_formKey.currentState!.validate()) {
+      // Dismiss the form first to avoid black screen
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+
+      // Call onSubmit callback
+      widget.onSubmit();
+
       try {
         final service = AccountRegistrationService();
         final provider =
@@ -45,8 +53,8 @@ class _RegisterAccountFormState extends State<RegisterAccountForm> {
         final trimmedAccountNumber = _accountNumber.text.trim();
         final trimmedAccountHolderName = _accountHolderName.text.trim();
 
-        // Create account immediately (don't await sync)
-        final account = await service.registerAccount(
+        // Create account (sync happens in background)
+        await service.registerAccount(
           accountNumber: trimmedAccountNumber,
           accountHolderName: trimmedAccountHolderName,
           bankId: selected_bank,
@@ -57,24 +65,10 @@ class _RegisterAccountFormState extends State<RegisterAccountForm> {
           },
         );
 
-        if (account != null && mounted) {
-          // Refresh data to show new account
-          provider.loadData();
-          // Close drawer immediately
-          widget.onSubmit();
-          Navigator.pop(context);
-          // Sync will continue in background and update status in account cards
-        }
+        // Refresh data to show new account
+        provider.loadData();
       } catch (e) {
         print("debug: Error registering account: $e");
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error registering account: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
       }
     }
   }
