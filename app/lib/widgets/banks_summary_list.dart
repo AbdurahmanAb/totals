@@ -241,7 +241,7 @@ class _BanksSummaryListState extends State<BanksSummaryList> {
                                 child: Text(
                                   widget.visibleTotalBalancesForSubCards
                                           .contains(bank.bankId.toString())
-                                      ? formatNumberWithComma(
+                                      ? formatNumberAbbreviated(
                                               (bank.totalBalance * 100).ceil() /
                                                   100.0) +
                                           " ETB"

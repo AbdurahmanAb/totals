@@ -41,10 +41,14 @@ class _RegisterAccountFormState extends State<RegisterAccountForm> {
         final provider =
             Provider.of<TransactionProvider>(context, listen: false);
 
+        // Trim whitespace from account number to prevent issues
+        final trimmedAccountNumber = _accountNumber.text.trim();
+        final trimmedAccountHolderName = _accountHolderName.text.trim();
+
         // Create account immediately (don't await sync)
         final account = await service.registerAccount(
-          accountNumber: _accountNumber.text,
-          accountHolderName: _accountHolderName.text,
+          accountNumber: trimmedAccountNumber,
+          accountHolderName: trimmedAccountHolderName,
           bankId: selected_bank,
           syncPreviousSms: syncPreviousSms,
           onSyncComplete: () {
@@ -332,17 +336,31 @@ class _RegisterAccountFormState extends State<RegisterAccountForm> {
             controller: _accountNumber,
             labelText: "Account Number",
             keyboardType: TextInputType.number,
-            validator: (value) => (value == null || value.isEmpty)
-                ? "Enter account number"
-                : null,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return "Enter account number";
+              }
+              // Check if value is only whitespace after trimming
+              if (value.trim().isEmpty) {
+                return "Enter account number";
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 20),
           CustomTextField(
             controller: _accountHolderName,
             labelText: "Account Holder Name",
-            validator: (value) => (value == null || value.isEmpty)
-                ? "Enter account holder name"
-                : null,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return "Enter account holder name";
+              }
+              // Check if value is only whitespace after trimming
+              if (value.trim().isEmpty) {
+                return "Enter account holder name";
+              }
+              return null;
+            },
           ),
 
           const SizedBox(height: 24),

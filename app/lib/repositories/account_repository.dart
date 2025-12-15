@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart' hide Transaction;
 import 'package:totals/database/database_helper.dart';
 import 'package:totals/models/account.dart';
+import 'package:totals/repositories/transaction_repository.dart';
 
 class AccountRepository {
   Future<List<Account>> getAccounts() async {
@@ -76,6 +77,31 @@ class AccountRepository {
 
   Future<void> deleteAccount(String accountNumber, int bank) async {
     final db = await DatabaseHelper.instance.database;
+    
+    // First, check if this is the only account for this bank
+    // If so, we should also delete transactions with NULL accountNumber for this bank
+    final bankAccounts = await db.query(
+      'accounts',
+      where: 'bank = ?',
+      whereArgs: [bank],
+    );
+    final isOnlyAccount = bankAccounts.length == 1;
+    
+    // Delete associated transactions
+    final transactionRepo = TransactionRepository();
+    await transactionRepo.deleteTransactionsByAccount(accountNumber, bank);
+    
+    // If this was the only account for this bank, also delete transactions with NULL accountNumber
+    // (This handles legacy data that was associated with this account)
+    if (isOnlyAccount && bank != 2 && bank != 6) {
+      await db.delete(
+        'transactions',
+        where: 'bankId = ? AND accountNumber IS NULL',
+        whereArgs: [bank],
+      );
+    }
+    
+    // Finally, delete the account itself
     await db.delete(
       'accounts',
       where: 'accountNumber = ? AND bank = ?',

@@ -8,6 +8,31 @@ String formatNumberWithComma(double? number) {
       );
 }
 
+String formatNumberAbbreviated(double? number) {
+  if (number == null) return '0';
+  
+  final value = number.abs();
+  
+  if (value >= 1000000) {
+    // Round to nearest 100k for millions
+    final rounded = (value / 100000).round() / 10.0;
+    final formatted = rounded % 1 == 0 
+        ? rounded.toInt().toString() 
+        : rounded.toString();
+    return '${number < 0 ? '-' : ''}$formatted M';
+  } else if (value >= 1000) {
+    // Round to nearest 100 for thousands
+    final rounded = (value / 100).round() / 10.0;
+    final formatted = rounded % 1 == 0 
+        ? rounded.toInt().toString() 
+        : rounded.toString();
+    return '${number < 0 ? '-' : ''}$formatted k';
+  } else {
+    // For values less than 1000, show as is (rounded to nearest integer)
+    return '${number < 0 ? '-' : ''}${value.round()}';
+  }
+}
+
 String formatTime(String input) {
   try {
     DateTime dateTime;
