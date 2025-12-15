@@ -29,7 +29,7 @@
 
 ### 🔒 Privacy & Security
 
-- **100% Local Storage**: All data is stored locally on your device using SQLite
+- **100% Local Storage**: All data is stored locally on your device using sqflite
 - **No Cloud Sync**: Your financial data never leaves your device
 - **Biometric Authentication**: Secure access with fingerprint or face recognition
 - **Offline-First**: Works completely offline after initial setup
@@ -124,7 +124,7 @@ lib/
 ├── data/
 │   └── consts.dart            # Bank definitions and constants
 ├── database/
-│   ├── database_helper.dart   # SQLite database setup
+│   ├── database_helper.dart   # sqflite database setup
 │   └── migration_helper.dart  # Database migrations
 ├── local_server/              # HTTP server for web access
 │   ├── handlers/              # API route handlers
@@ -174,7 +174,7 @@ lib/
   - Analytics (`/api/analytics/*`)
 
 #### Database
-- SQLite database for local storage
+- sqfite database for local storage
 - Tables: accounts, transactions, failed_parses
 - Automatic migrations for schema updates
 
@@ -222,7 +222,7 @@ The app includes debug tools accessible from the home screen:
 
 Key dependencies include:
 - `provider` - State management
-- `sqflite` - Local SQLite database
+- `sqflite` - Local sqfite database
 - `another_telephony` - SMS monitoring
 - `shelf` - HTTP server framework
 - `local_auth` - Biometric authentication
