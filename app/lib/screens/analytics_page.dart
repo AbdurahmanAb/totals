@@ -10,6 +10,7 @@ import 'package:totals/widgets/analytics/chart_container.dart';
 import 'package:totals/widgets/analytics/transactions_list.dart';
 import 'package:totals/widgets/analytics/chart_data_point.dart';
 import 'package:totals/widgets/analytics/chart_data_utils.dart';
+import 'package:totals/screens/insights_page.dart';
 
 class AnalyticsPage extends StatefulWidget {
   const AnalyticsPage({super.key});
@@ -460,6 +461,16 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                         if (_timeFramePageController.hasClients) {
                           _timeFramePageController.jumpToPage(1);
                         }
+                      },
+                      onInsightsTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => InsightsPage(
+                              transactions: filteredTransactions,
+                              periodLabel: 'Based on $_selectedPeriod view',
+                            ),
+                          ),
+                        );
                       },
                     ),
                     const SizedBox(height: 24),

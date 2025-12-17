@@ -83,8 +83,7 @@ class InsightsService {
 
     for (final t in txns) {
       // parse from ISO string.
-      final txnDate =
-          DateTime.tryParse(t.time ?? '') ??
+      final txnDate = DateTime.tryParse(t.time ?? '') ??
           DateTime.now().subtract(Duration(days: 30));
       final key = '${txnDate.year}-${txnDate.month}';
 
@@ -137,15 +136,13 @@ class InsightsService {
   }) {
     // weighted blend: spend discipline, savings, stability, flexibility
 
-    final expenseIncomeRatio = income == 0
-        ? 1.0
-        : (expense / income).clamp(0, 2);
+    final expenseIncomeRatio =
+        income == 0 ? 1.0 : (expense / income).clamp(0, 2);
 
     final stability = 1 / (1 + variance);
     final essentials = 1 - essentialsRatio;
 
-    double score =
-        0.35 * (1 - expenseIncomeRatio.clamp(0, 1)) +
+    double score = 0.35 * (1 - expenseIncomeRatio.clamp(0, 1)) +
         0.25 * savingsRate.clamp(0, 1) +
         0.20 * stability.clamp(0, 1) +
         0.20 * essentials.clamp(0, 1);
@@ -153,16 +150,26 @@ class InsightsService {
     return {'value': (score * 100).clamp(0, 100).round()};
   }
 
-  // assumption: credits or non-negative amounts are treated as
-  // income by default.
   bool _isIncome(Transaction t) {
-    return (t.type?.toUpperCase().contains("CREDIT") ?? false) ||
-        (t.amount >= 0);
+    final type = t.type?.toUpperCase() ?? '';
+
+    // Prefer explicit type when available
+    if (type.contains("CREDIT")) return true;
+    if (type.contains("DEBIT")) return false;
+
+    // Fallback to sign only when type is unknown
+    return t.amount >= 0;
   }
 
   bool _isExpense(Transaction t) {
-    return (t.type?.toUpperCase().contains("DEBIT") ?? false);
+    final type = t.type?.toUpperCase() ?? '';
 
+    // Prefer explicit type when available
+    if (type.contains("DEBIT")) return true;
+    if (type.contains("CREDIT")) return false;
+
+    // Fallback to sign only when type is unknown
+    return t.amount < 0;
   }
 
   Map<String, dynamic> _projections(
@@ -241,21 +248,16 @@ class InsightsService {
     // essentials ratio is how much we spend on essentials
     // for now it's placeholder value, in case we get better tags we
     // could more accurately calculate it.
-    final essenSpends = txns
-        .where((t) => !_isIncome(t))
-        .map((t) => t.amount)
-        .toList();
+    final essenSpends =
+        txns.where((t) => !_isIncome(t)).map((t) => t.amount).toList();
     final essentialsSpend = MathUtils.findSum(essenSpends);
 
-    final totalSpends = txns
-        .where((t) => !_isIncome(t))
-        .map((t) => t.amount)
-        .toList();
+    final totalSpends =
+        txns.where((t) => !_isIncome(t)).map((t) => t.amount).toList();
     final totalSpend = MathUtils.findSum(totalSpends);
 
-    final essentialsRatio = totalSpend == 0
-        ? 0
-        : (essentialsSpend / totalSpend).clamp(0, 1);
+    final essentialsRatio =
+        totalSpend == 0 ? 0 : (essentialsSpend / totalSpend).clamp(0, 1);
 
     return {
       'byCategory': byCategory,
@@ -271,8 +273,7 @@ class InsightsService {
 
     for (final t in txns) {
       // parse from ISO string.
-      final txnDate =
-          DateTime.tryParse(t.time ?? '') ??
+      final txnDate = DateTime.tryParse(t.time ?? '') ??
           DateTime.now().subtract(Duration(days: 30));
 
       final key = '${txnDate.year}-${txnDate.month}';
