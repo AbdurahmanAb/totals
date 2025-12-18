@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:totals/providers/transaction_provider.dart';
@@ -21,9 +22,11 @@ import 'package:totals/screens/analytics_page.dart';
 import 'package:totals/screens/web_page.dart';
 import 'package:totals/screens/settings_page.dart';
 import 'package:totals/services/notification_service.dart';
+import 'package:totals/services/notification_intent_bus.dart';
 import 'package:totals/data/consts.dart';
 import 'package:totals/utils/text_utils.dart';
 import 'package:totals/widgets/today_transactions_list.dart';
+import 'package:totals/widgets/categorize_transaction_sheet.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -46,6 +49,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   List<String> visibleTotalBalancesForSubCards = [];
   int activeTab = 0;
   int _bottomNavIndex = 0;
+  StreamSubscription<NotificationIntent>? _notificationIntentSub;
 
   @override
   void initState() {
@@ -57,6 +61,19 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService.instance.requestPermissionsIfNeeded();
+    });
+
+    _notificationIntentSub = NotificationIntentBus.instance.stream.listen(
+      (intent) {
+        if (!mounted) return;
+        if (intent is CategorizeTransactionIntent) {
+          _openTodayAndCategorize(intent.reference);
+        }
+      },
+    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await NotificationService.instance.emitLaunchIntentIfAny();
     });
 
     // Set up callback with mounted check
@@ -146,9 +163,48 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _notificationIntentSub?.cancel();
     _pageController.dispose();
     _mainPageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _openTodayAndCategorize(String reference) async {
+    if (!mounted) return;
+
+    if (_bottomNavIndex != 0) {
+      setState(() {
+        _bottomNavIndex = 0;
+      });
+      _mainPageController.jumpToPage(0);
+    }
+
+    changeTab(HomeTabs.recentTabId);
+
+    final provider = Provider.of<TransactionProvider>(context, listen: false);
+    await provider.loadData();
+    if (!mounted) return;
+
+    Transaction? match;
+    for (final t in provider.allTransactions) {
+      if (t.reference == reference) {
+        match = t;
+        break;
+      }
+    }
+
+    if (match == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Transaction not found')),
+      );
+      return;
+    }
+
+    await showCategorizeTransactionSheet(
+      context: context,
+      provider: provider,
+      transaction: match,
+    );
   }
 
   @override

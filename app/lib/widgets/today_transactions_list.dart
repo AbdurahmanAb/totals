@@ -125,7 +125,8 @@ class _TodayTransactionItem extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+            color:
+                Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: Theme.of(context)
@@ -170,18 +171,18 @@ class _TodayTransactionItem extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                        if (transaction.receiver != null)
-                          Text(
-                            transaction.receiver!,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                        // if (transaction.receiver != null)
+                        //   Text(
+                        //     transaction.receiver!,
+                        //     style: TextStyle(
+                        //       fontSize: 13,
+                        //       color: Theme.of(context)
+                        //           .colorScheme
+                        //           .onSurfaceVariant,
+                        //     ),
+                        //     maxLines: 1,
+                        //     overflow: TextOverflow.ellipsis,
+                        //   ),
                         const SizedBox(height: 10),
                         Wrap(
                           spacing: 8,

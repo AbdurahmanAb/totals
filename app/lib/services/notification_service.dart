@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:totals/data/consts.dart';
 import 'package:totals/models/transaction.dart';
+import 'package:totals/services/notification_intent_bus.dart';
+import 'package:totals/services/notification_settings_service.dart';
 import 'package:totals/utils/text_utils.dart';
 
 class NotificationService {
@@ -10,6 +12,9 @@ class NotificationService {
   static final NotificationService instance = NotificationService._();
 
   static const String _transactionChannelId = 'transactions';
+  static const String _dailySpendingChannelId = 'daily_spending';
+  static const int dailySpendingNotificationId = 9001;
+  static const int dailySpendingTestNotificationId = 9002;
 
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -24,7 +29,10 @@ class NotificationService {
       iOS: DarwinInitializationSettings(),
     );
 
-    await _plugin.initialize(initializationSettings);
+    await _plugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: _onNotificationResponse,
+    );
 
     final androidPlugin =
         _plugin.resolvePlatformSpecificImplementation<
@@ -37,8 +45,63 @@ class NotificationService {
         importance: Importance.high,
       ),
     );
+    await androidPlugin?.createNotificationChannel(
+      const AndroidNotificationChannel(
+        _dailySpendingChannelId,
+        "Today's spending",
+        description: "Daily summary of today's spending",
+        importance: Importance.defaultImportance,
+      ),
+    );
 
     _initialized = true;
+  }
+
+  void _onNotificationResponse(NotificationResponse response) {
+    try {
+      final payload = response.payload;
+      final intent = _intentFromPayload(payload);
+      if (intent != null) {
+        NotificationIntentBus.instance.emit(intent);
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('debug: Failed handling notification tap: $e');
+      }
+    }
+  }
+
+  NotificationIntent? _intentFromPayload(String? payload) {
+    final raw = payload?.trim();
+    if (raw == null || raw.isEmpty) return null;
+
+    if (raw.startsWith('tx:')) {
+      final encoded = raw.substring(3);
+      final reference = Uri.decodeComponent(encoded);
+      if (reference.trim().isEmpty) return null;
+      return CategorizeTransactionIntent(reference);
+    }
+
+    return null;
+  }
+
+  Future<void> emitLaunchIntentIfAny() async {
+    try {
+      await ensureInitialized();
+      final details = await _plugin.getNotificationAppLaunchDetails();
+      if (details == null) return;
+      if (details.didNotificationLaunchApp != true) return;
+
+      final payload = details.notificationResponse?.payload;
+      final intent = _intentFromPayload(payload);
+      if (intent != null) {
+        NotificationIntentBus.instance.emit(intent);
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('debug: Failed reading launch notification details: $e');
+      }
+    }
   }
 
   Future<void> requestPermissionsIfNeeded() async {
@@ -76,11 +139,16 @@ class NotificationService {
     try {
       await ensureInitialized();
 
+      final enabled = await NotificationSettingsService.instance
+          .isTransactionNotificationsEnabled();
+      if (!enabled) return;
+
       final bank = _findBank(bankId);
       final title = _buildTitle(bank, transaction);
       final body = _buildBody(transaction);
 
       final id = _notificationId(transaction);
+      final payload = 'tx:${Uri.encodeComponent(transaction.reference)}';
 
       await _plugin.show(
         id,
@@ -97,12 +165,64 @@ class NotificationService {
           ),
           iOS: DarwinNotificationDetails(),
         ),
+        payload: payload,
       );
     } catch (e) {
       if (kDebugMode) {
         print('debug: Failed to show transaction notification: $e');
       }
     }
+  }
+
+  Future<bool> showDailySpendingNotification({
+    required double amount,
+    int id = dailySpendingNotificationId,
+    bool ignoreEnabledCheck = false,
+  }) async {
+    try {
+      await ensureInitialized();
+
+      if (!ignoreEnabledCheck) {
+        final enabled =
+            await NotificationSettingsService.instance.isDailySummaryEnabled();
+        if (!enabled) return false;
+      }
+
+      final title = "Today's spending";
+      final body = "You've spent ${formatNumberWithComma(amount)} ETB today.";
+
+      await _plugin.show(
+        id,
+        title,
+        body,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            _dailySpendingChannelId,
+            "Today's spending",
+            channelDescription: "Daily summary of today's spending",
+            importance: Importance.defaultImportance,
+            priority: Priority.defaultPriority,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+      );
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('debug: Failed to show daily spending notification: $e');
+      }
+      return false;
+    }
+  }
+
+  Future<bool> showDailySpendingTestNotification({
+    required double amount,
+  }) async {
+    return showDailySpendingNotification(
+      amount: amount,
+      id: dailySpendingTestNotificationId,
+      ignoreEnabledCheck: true,
+    );
   }
 
   static Bank? _findBank(int? bankId) {
