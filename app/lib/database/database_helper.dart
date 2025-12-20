@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     final db = await openDatabase(
       path,
-      version: 11,
+      version: 12,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -114,6 +114,16 @@ class DatabaseHelper {
         settledBalance REAL,
         pendingCredit REAL,
         UNIQUE(accountNumber, bank)
+      )
+    ''');
+
+    // Profiles table
+    await db.execute('''
+      CREATE TABLE profiles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT
       )
     ''');
 
@@ -304,6 +314,30 @@ class DatabaseHelper {
       await _ensureCategoriesSchema(db);
       await _assignBuiltInCategoryKeys(db);
       await _seedBuiltInCategories(db);
+    }
+
+    if (oldVersion < 12) {
+      // Add profiles table for version 12
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS profiles (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          createdAt TEXT NOT NULL,
+          updatedAt TEXT
+        )
+      ''');
+      
+      // Initialize default "Personal" profile if no profiles exist
+      final profileCount = await db.rawQuery('SELECT COUNT(*) as count FROM profiles');
+      if ((profileCount.first['count'] as int) == 0) {
+        await db.insert(
+          'profiles',
+          {
+            'name': 'Personal',
+            'createdAt': DateTime.now().toIso8601String(),
+          },
+        );
+      }
     }
   }
 

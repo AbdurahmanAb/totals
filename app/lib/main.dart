@@ -6,6 +6,7 @@ import 'package:totals/providers/theme_provider.dart';
 import 'package:totals/services/account_sync_status_service.dart';
 import 'package:totals/screens/home_page.dart';
 import 'package:totals/database/migration_helper.dart';
+import 'package:totals/repositories/profile_repository.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:totals/background/daily_spending_worker.dart';
 import 'package:totals/services/notification_scheduler.dart';
@@ -15,6 +16,10 @@ void main() async {
 
   // Initialize database and migrate if needed
   // await MigrationHelper.migrateIfNeeded();
+
+  // Initialize default profile if none exists
+  final profileRepo = ProfileRepository();
+  await profileRepo.initializeDefaultProfile();
 
   if (!kIsWeb) {
     try {

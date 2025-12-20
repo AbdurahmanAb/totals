@@ -12,7 +12,8 @@ import 'package:totals/services/data_export_import_service.dart';
 import 'package:totals/screens/categories_page.dart';
 import 'package:totals/screens/notification_settings_page.dart';
 import 'package:totals/widgets/clear_database_dialog.dart';
-import 'package:totals/widgets/add_account_form.dart';
+import 'package:totals/screens/profile_management_page.dart';
+import 'package:totals/repositories/profile_repository.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -25,6 +26,7 @@ class _SettingsPageState extends State<SettingsPage>
     with SingleTickerProviderStateMixin {
   final DataExportImportService _exportImportService =
       DataExportImportService();
+  final ProfileRepository _profileRepo = ProfileRepository();
   bool _isExporting = false;
   bool _isImporting = false;
 
@@ -56,18 +58,65 @@ class _SettingsPageState extends State<SettingsPage>
   }
 
   Future<void> _exportData() async {
+    // Show dialog to choose between save and share
+    final action = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Export Data'),
+        content: const Text('Choose how you want to export your data:'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'save'),
+            child: const Text('Save to File'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'share'),
+            child: const Text('Share'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    if (action == null) return;
+
     setState(() => _isExporting = true);
     try {
       final jsonData = await _exportImportService.exportAllData();
-
-      // Save to temporary file
-      final tempDir = await getTemporaryDirectory();
       final timestamp =
           DateTime.now().toIso8601String().replaceAll(':', '-').split('.')[0];
-      final file = File('${tempDir.path}/totals_export_$timestamp.json');
+      final fileName = 'totals_export_$timestamp.json';
+
+      if (action == 'save') {
+        // Save to documents directory
+        final documentsDir = await getApplicationDocumentsDirectory();
+        final file = File('${documentsDir.path}/$fileName');
       await file.writeAsString(jsonData);
 
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Data saved to: $fileName',
+                style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+              ),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          );
+        }
+      } else {
       // Share the file
+        final tempDir = await getTemporaryDirectory();
+        final file = File('${tempDir.path}/$fileName');
+        await file.writeAsString(jsonData);
+
       await Share.shareXFiles(
         [XFile(file.path)],
         text: 'Totals Data Export',
@@ -76,18 +125,19 @@ class _SettingsPageState extends State<SettingsPage>
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Data exported successfully',
-              style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+            SnackBar(
+              content: Text(
+                'Data exported successfully',
+                style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+              ),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -204,62 +254,20 @@ class _SettingsPageState extends State<SettingsPage>
     }
   }
 
-  String _getAccountInitials(String accountHolderName) {
-    if (accountHolderName.isEmpty) return 'U';
-    final parts = accountHolderName.trim().split(' ');
+  String _getProfileInitials(String profileName) {
+    if (profileName.isEmpty) return 'U';
+    final parts = profileName.trim().split(' ');
     if (parts.length >= 2) {
       return (parts[0][0] + parts[1][0]).toUpperCase();
     }
-    return accountHolderName[0].toUpperCase();
+    return profileName[0].toUpperCase();
   }
 
-  void _navigateToManageAccounts() {
-    showModalBottomSheet(
-      isScrollControlled: true,
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.background,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(24),
-              topRight: Radius.circular(24),
-            ),
-          ),
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-          ),
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  margin: const EdgeInsets.only(top: 12, bottom: 16),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: RegisterAccountForm(
-                    onSubmit: () {
-                      final provider = Provider.of<TransactionProvider>(
-                          context,
-                          listen: false);
-                      provider.loadData();
-                    },
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
-            ),
-          ),
-        );
-      },
+  void _navigateToManageProfiles() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const ProfileManagementPage(),
+      ),
     );
   }
 
@@ -405,7 +413,7 @@ class _SettingsPageState extends State<SettingsPage>
             floating: true,
             pinned: true,
             snap: false,
-            elevation: 0,
+        elevation: 0,
             backgroundColor: theme.colorScheme.background,
             flexibleSpace: FlexibleSpaceBar(
               titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
@@ -419,90 +427,105 @@ class _SettingsPageState extends State<SettingsPage>
           ),
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            sliver: Consumer<TransactionProvider>(
-              builder: (context, provider, child) {
-                // Get account name for profile card
-                final accounts = provider.accountSummaries;
-                final accountName = accounts.isNotEmpty
-                    ? accounts.first.accountHolderName
-                    : 'No Account';
-                final accountInitials = accounts.isNotEmpty
-                    ? _getAccountInitials(accounts.first.accountHolderName)
-                    : 'U';
+            sliver: FutureBuilder(
+              future: _profileRepo.getDefaultProfile(),
+              builder: (context, snapshot) {
+                final profileName = snapshot.data?.name ?? 'Personal';
+                final profileInitials = _getProfileInitials(profileName);
 
-                return SliverList(
-                  delegate: SliverChildListDelegate([
-                    // Profile Card
-                    _buildProfileCard(
-                      context: context,
-                      accountName: accountName,
-                      accountInitials: accountInitials,
-                      isDark: isDark,
-                    ),
-                    const SizedBox(height: 24),
+                return Consumer<TransactionProvider>(
+                  builder: (context, provider, child) {
+                    return SliverList(
+                      delegate: SliverChildListDelegate([
+                        // Profile Card
+                        _buildProfileCard(
+                          context: context,
+                          profileName: profileName,
+                          profileInitials: profileInitials,
+                          isDark: isDark,
+                        ),
+                        const SizedBox(height: 24),
 
-                    // Section: Settings
-                    _buildSectionHeader(title: 'Preferences'),
-                    const SizedBox(height: 12),
-                    _buildSettingsCard(
-                      children: [
-                        _buildSettingTile(
-                          icon: Icons.category_rounded,
-                          title: 'Categories',
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const CategoriesPage(),
-                              ),
-                            );
+                        // Section: Settings
+                        _buildSectionHeader(title: 'Preferences'),
+                        const SizedBox(height: 12),
+                        _buildSettingsCard(
+              children: [
+                Consumer<ThemeProvider>(
+                  builder: (context, themeProvider, child) {
+                                return _buildSettingTile(
+                                  icon: themeProvider.themeMode == ThemeMode.dark
+                              ? Icons.light_mode_rounded
+                              : Icons.dark_mode_rounded,
+                                  title: 'Theme',
+                        trailing: Switch(
+                          value: themeProvider.themeMode == ThemeMode.dark,
+                          onChanged: (value) {
+                            themeProvider.toggleTheme();
                           },
                         ),
-                        _buildDivider(context),
-                        _buildSettingTile(
-                          icon: Icons.notifications_rounded,
-                          title: 'Notifications',
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const NotificationSettingsPage(),
-                              ),
-                            );
-                          },
+                                  onTap: null,
+                    );
+                  },
+                ),
+                            _buildDivider(context),
+                            _buildSettingTile(
+                              icon: Icons.category_rounded,
+                              title: 'Categories',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const CategoriesPage(),
                         ),
-                        _buildDivider(context),
-                        _buildSettingTile(
-                          icon: Icons.upload_rounded,
-                          title: 'Export Data',
-                          trailing: _isExporting
-                              ? SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: theme.colorScheme.primary,
-                                  ),
-                                )
-                              : null,
-                          onTap: _isExporting ? null : _exportData,
+                      );
+                    },
+                  ),
+                            _buildDivider(context),
+                            _buildSettingTile(
+                              icon: Icons.notifications_rounded,
+                              title: 'Notifications',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const NotificationSettingsPage(),
                         ),
-                        _buildDivider(context),
-                        _buildSettingTile(
-                          icon: Icons.download_rounded,
-                          title: 'Import Data',
-                          trailing: _isImporting
-                              ? SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: theme.colorScheme.primary,
-                                  ),
-                                )
-                              : null,
-                          onTap: _isImporting ? null : _importData,
+                      );
+                    },
+                  ),
+                            _buildDivider(context),
+                            _buildSettingTile(
+                              icon: Icons.upload_rounded,
+                              title: 'Export Data',
+                    trailing: _isExporting
+                                  ? SizedBox(
+                            width: 20,
+                            height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                          )
+                                  : null,
+                    onTap: _isExporting ? null : _exportData,
+                  ),
+                            _buildDivider(context),
+                            _buildSettingTile(
+                              icon: Icons.download_rounded,
+                              title: 'Import Data',
+                    trailing: _isImporting
+                                  ? SizedBox(
+                            width: 20,
+                            height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                          )
+                                  : null,
+                    onTap: _isImporting ? null : _importData,
+                  ),
+                          ],
                         ),
-                      ],
-                    ),
                     const SizedBox(height: 24),
 
                     // Section: Support
@@ -532,10 +555,12 @@ class _SettingsPageState extends State<SettingsPage>
                     ),
                     const SizedBox(height: 32),
 
-                    // Support Developers Button
-                    _buildSupportDevelopersButton(),
-                    const SizedBox(height: 48),
-                  ]),
+                        // Support Developers Button
+                        _buildSupportDevelopersButton(),
+                        const SizedBox(height: 48),
+                      ]),
+                    );
+                  },
                 );
               },
             ),
@@ -547,85 +572,79 @@ class _SettingsPageState extends State<SettingsPage>
 
   Widget _buildProfileCard({
     required BuildContext context,
-    required String accountName,
-    required String accountInitials,
+    required String profileName,
+    required String profileInitials,
     required bool isDark,
   }) {
     final theme = Theme.of(context);
+    final groupColor = isDark
+        ? const Color(0xFF1C1C1E)
+        : const Color(0xFFF2F2F7);
     
-    return GestureDetector(
-      onTap: _navigateToManageAccounts,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: theme.colorScheme.outline.withOpacity(0.1),
-            width: 1,
+    return Container(
+      decoration: BoxDecoration(
+        color: groupColor,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _navigateToManageProfiles,
+          borderRadius: BorderRadius.circular(10),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      profileInitials,
+                      style: TextStyle(
+                        color: theme.colorScheme.onPrimary,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        profileName,
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Click to manage profiles',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: theme.colorScheme.onSurface.withOpacity(0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  size: 20,
+                  color: theme.colorScheme.onSurface.withOpacity(0.3),
+                ),
+              ],
+            ),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    theme.colorScheme.primary,
-                    theme.colorScheme.primary.withOpacity(0.8),
-                  ],
-                ),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  accountInitials,
-                  style: TextStyle(
-                    color: theme.colorScheme.onPrimary,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    accountName,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Tap to manage accounts',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.outline,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 16,
-              color: theme.colorScheme.outline.withOpacity(0.5),
-            ),
-          ],
         ),
       ),
     );
@@ -674,6 +693,7 @@ class _SettingsPageState extends State<SettingsPage>
     Color? titleColor,
     Widget? trailing,
     VoidCallback? onTap,
+    bool showTrailing = true,
   }) {
     final theme = Theme.of(context);
     
@@ -711,7 +731,7 @@ class _SettingsPageState extends State<SettingsPage>
               ),
               if (trailing != null)
                 trailing
-              else
+              else if (showTrailing && onTap != null)
                 Icon(
                   Icons.arrow_forward_ios_rounded,
                   size: 16,
