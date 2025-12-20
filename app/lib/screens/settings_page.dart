@@ -11,6 +11,8 @@ import 'package:totals/providers/transaction_provider.dart';
 import 'package:totals/services/data_export_import_service.dart';
 import 'package:totals/screens/categories_page.dart';
 import 'package:totals/screens/notification_settings_page.dart';
+import 'package:totals/widgets/clear_database_dialog.dart';
+import 'package:totals/widgets/add_account_form.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -74,9 +76,16 @@ class _SettingsPageState extends State<SettingsPage>
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Data exported successfully'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: Text(
+              'Data exported successfully',
+              style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+            ),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
@@ -84,8 +93,15 @@ class _SettingsPageState extends State<SettingsPage>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Export failed: $e'),
-            backgroundColor: Colors.red,
+            content: Text(
+              'Export failed: $e',
+              style: TextStyle(color: Theme.of(context).colorScheme.onError),
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
@@ -112,19 +128,26 @@ class _SettingsPageState extends State<SettingsPage>
         final confirmed = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             title: const Text('Import Data'),
             content: const Text(
-              'This will add the imported data to your existing data. Duplicates will be skipped. Continue?',
+              'This will add the imported data to your existing data. Duplicates will be skipped.',
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
                 child: const Text('Cancel'),
               ),
-              TextButton(
+              ElevatedButton(
                 onPressed: () => Navigator.pop(context, true),
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.red,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 child: const Text('Import'),
               ),
@@ -142,9 +165,17 @@ class _SettingsPageState extends State<SettingsPage>
             await provider.loadData();
 
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Data imported successfully'),
-                backgroundColor: Colors.green,
+              SnackBar(
+                content: Text(
+                  'Data imported successfully',
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onPrimary),
+                ),
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             );
           }
@@ -154,8 +185,15 @@ class _SettingsPageState extends State<SettingsPage>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Import failed: $e'),
-            backgroundColor: Colors.red,
+            content: Text(
+              'Import failed: $e',
+              style: TextStyle(color: Theme.of(context).colorScheme.onError),
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
@@ -166,219 +204,592 @@ class _SettingsPageState extends State<SettingsPage>
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        elevation: 0,
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16),
+  String _getAccountInitials(String accountHolderName) {
+    if (accountHolderName.isEmpty) return 'U';
+    final parts = accountHolderName.trim().split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return accountHolderName[0].toUpperCase();
+  }
+
+  void _navigateToManageAccounts() {
+    showModalBottomSheet(
+      isScrollControlled: true,
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.background,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // Theme Switcher
-                Consumer<ThemeProvider>(
-                  builder: (context, themeProvider, child) {
-                    return Card(
-                      child: ListTile(
-                        leading: Icon(
-                          themeProvider.themeMode == ThemeMode.dark
-                              ? Icons.light_mode_rounded
-                              : Icons.dark_mode_rounded,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        title: const Text('Theme'),
-                        subtitle: Text(
-                          themeProvider.themeMode == ThemeMode.dark
-                              ? 'Dark Mode'
-                              : 'Light Mode',
-                        ),
-                        trailing: Switch(
-                          value: themeProvider.themeMode == ThemeMode.dark,
-                          onChanged: (value) {
-                            themeProvider.toggleTheme();
-                          },
-                        ),
-                      ),
-                    );
-                  },
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 16),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-                const SizedBox(height: 16),
-
-                Card(
-                  child: ListTile(
-                    leading: Icon(
-                      Icons.category_rounded,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    title: const Text('Categories'),
-                    subtitle: const Text('Add or edit categories'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const CategoriesPage(),
-                        ),
-                      );
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: RegisterAccountForm(
+                    onSubmit: () {
+                      final provider = Provider.of<TransactionProvider>(
+                          context,
+                          listen: false);
+                      provider.loadData();
                     },
                   ),
                 ),
-                const SizedBox(height: 8),
-
-                Card(
-                  child: ListTile(
-                    leading: Icon(
-                      Icons.notifications_rounded,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    title: const Text('Notifications'),
-                    subtitle: const Text('Daily summary time and alerts'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const NotificationSettingsPage(),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                // Export Button
-                Card(
-                  child: ListTile(
-                    leading: Icon(
-                      Icons.upload_file,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    title: const Text('Export Data'),
-                    subtitle: const Text('Export all data to JSON file'),
-                    trailing: _isExporting
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.chevron_right),
-                    onTap: _isExporting ? null : _exportData,
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                // Import Button
-                Card(
-                  child: ListTile(
-                    leading: Icon(
-                      Icons.download,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    title: const Text('Import Data'),
-                    subtitle: const Text('Import data from JSON file'),
-                    trailing: _isImporting
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.chevron_right),
-                    onTap: _isImporting ? null : _importData,
-                  ),
-                ),
+                const SizedBox(height: 20),
               ],
             ),
           ),
+        );
+      },
+    );
+  }
 
-          // Support the Devs Button - Fixed at bottom
-          _buildSupportButton(),
-          const SizedBox(height: 100), // Space for nav bar
+  void _showAboutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text('About'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(
+                child: Text(
+                  'T',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onPrimary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Totals',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Version 1.1.0',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'A personal finance tracking app that helps you manage your bank accounts and transactions.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildSupportButton() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      child: GestureDetector(
-        onTap: _openSupportLink,
-        child: AnimatedBuilder(
-          animation: _shimmerController,
-          builder: (context, child) {
-            return Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF1E88E5),
-                    const Color(0xFF42A5F5),
-                    const Color(0xFF64B5F6),
-                    const Color(0xFF42A5F5),
-                    const Color(0xFF1E88E5),
-                  ],
-                  stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
-                  begin: Alignment(-2.0 + 4.0 * _shimmerController.value, 0),
-                  end: Alignment(2.0 + 4.0 * _shimmerController.value, 0),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF1E88E5).withOpacity(0.4),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                    spreadRadius: 0,
-                  ),
-                ],
+  void _showHelpDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text('Help & FAQ'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildFAQItem(
+                context: context,
+                question: 'How do I add an account?',
+                answer: 'Tap on the account card at the top of settings to manage accounts.',
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Animated heart icon
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 1.0, end: 1.15),
-                    duration: const Duration(milliseconds: 800),
-                    curve: Curves.easeInOut,
-                    builder: (context, scale, child) {
-                      return Transform.scale(
-                        scale: 1.0 +
-                            0.1 *
-                                (1.0 +
-                                    ((_shimmerController.value * 2 - 1).abs() -
-                                            0.5)
-                                        .abs()),
-                        child: const Icon(
-                          Icons.favorite,
-                          color: Colors.white,
-                          size: 22,
+              const SizedBox(height: 16),
+              _buildFAQItem(
+                context: context,
+                question: 'How do I export my data?',
+                answer: 'Go to Settings > Export Data to save your data as a JSON file.',
+              ),
+              const SizedBox(height: 16),
+              _buildFAQItem(
+                context: context,
+                question: 'How do I categorize transactions?',
+                answer: 'Tap on any transaction and select a category from the list.',
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFAQItem({
+    required BuildContext context,
+    required String question,
+    required String answer,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          question,
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          answer,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.outline,
+              ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
+    return Scaffold(
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 120,
+            floating: true,
+            pinned: true,
+            snap: false,
+            elevation: 0,
+            backgroundColor: theme.colorScheme.background,
+            flexibleSpace: FlexibleSpaceBar(
+              titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+              title: Text(
+                'Settings',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            sliver: Consumer<TransactionProvider>(
+              builder: (context, provider, child) {
+                // Get account name for profile card
+                final accounts = provider.accountSummaries;
+                final accountName = accounts.isNotEmpty
+                    ? accounts.first.accountHolderName
+                    : 'No Account';
+                final accountInitials = accounts.isNotEmpty
+                    ? _getAccountInitials(accounts.first.accountHolderName)
+                    : 'U';
+
+                return SliverList(
+                  delegate: SliverChildListDelegate([
+                    // Profile Card
+                    _buildProfileCard(
+                      context: context,
+                      accountName: accountName,
+                      accountInitials: accountInitials,
+                      isDark: isDark,
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Section: Settings
+                    _buildSectionHeader(title: 'Preferences'),
+                    const SizedBox(height: 12),
+                    _buildSettingsCard(
+                      children: [
+                        _buildSettingTile(
+                          icon: Icons.category_rounded,
+                          title: 'Categories',
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const CategoriesPage(),
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
+                        _buildDivider(context),
+                        _buildSettingTile(
+                          icon: Icons.notifications_rounded,
+                          title: 'Notifications',
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const NotificationSettingsPage(),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildDivider(context),
+                        _buildSettingTile(
+                          icon: Icons.upload_rounded,
+                          title: 'Export Data',
+                          trailing: _isExporting
+                              ? SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                )
+                              : null,
+                          onTap: _isExporting ? null : _exportData,
+                        ),
+                        _buildDivider(context),
+                        _buildSettingTile(
+                          icon: Icons.download_rounded,
+                          title: 'Import Data',
+                          trailing: _isImporting
+                              ? SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                )
+                              : null,
+                          onTap: _isImporting ? null : _importData,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Section: Support
+                    _buildSectionHeader(title: 'Support'),
+                    const SizedBox(height: 12),
+                    _buildSettingsCard(
+                      children: [
+                        _buildSettingTile(
+                          icon: Icons.info_outline_rounded,
+                          title: 'About',
+                          onTap: _showAboutDialog,
+                        ),
+                        _buildDivider(context),
+                        _buildSettingTile(
+                          icon: Icons.help_outline_rounded,
+                          title: 'Help & FAQ',
+                          onTap: _showHelpDialog,
+                        ),
+                        _buildDivider(context),
+                        _buildSettingTile(
+                          icon: Icons.delete_outline_rounded,
+                          title: 'Clear Data',
+                          titleColor: theme.colorScheme.error,
+                          onTap: () => showClearDatabaseDialog(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Support Developers Button
+                    _buildSupportDevelopersButton(),
+                    const SizedBox(height: 48),
+                  ]),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileCard({
+    required BuildContext context,
+    required String accountName,
+    required String accountInitials,
+    required bool isDark,
+  }) {
+    final theme = Theme.of(context);
+    
+    return GestureDetector(
+      onTap: _navigateToManageAccounts,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: theme.colorScheme.outline.withOpacity(0.1),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    theme.colorScheme.primary,
+                    theme.colorScheme.primary.withOpacity(0.8),
+                  ],
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  accountInitials,
+                  style: TextStyle(
+                    color: theme.colorScheme.onPrimary,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w600,
                   ),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'Support the Devs',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    accountName,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  // const Icon(
-                  //   Icons.arrow_forward_rounded,
-                  //   color: Colors.white,
-                  //   size: 20,
-                  // ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Tap to manage accounts',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.outline,
+                    ),
+                  ),
                 ],
               ),
-            );
-          },
+            ),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 16,
+              color: theme.colorScheme.outline.withOpacity(0.5),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader({required String title}) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+      ),
+    );
+  }
+
+  Widget _buildSettingsCard({required List<Widget> children}) {
+    final theme = Theme.of(context);
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.1),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: children,
+      ),
+    );
+  }
+
+  Widget _buildSettingTile({
+    required IconData icon,
+    required String title,
+    Color? titleColor,
+    Widget? trailing,
+    VoidCallback? onTap,
+  }) {
+    final theme = Theme.of(context);
+    
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  icon,
+                  size: 20,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: titleColor ?? theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              if (trailing != null)
+                trailing
+              else
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 16,
+                  color: theme.colorScheme.outline.withOpacity(0.5),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDivider(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Divider(
+        height: 0.5,
+        thickness: 0.5,
+        color: theme.colorScheme.outline.withOpacity(0.1),
+      ),
+    );
+  }
+
+  Widget _buildSupportDevelopersButton() {
+    final theme = Theme.of(context);
+    
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.primary.withOpacity(0.9),
+            theme.colorScheme.primary.withOpacity(0.7),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.primary.withOpacity(0.3),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _openSupportLink,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedBuilder(
+                  animation: _shimmerController,
+                  builder: (context, child) {
+                    return Icon(
+                      Icons.favorite_rounded,
+                      color: theme.colorScheme.onPrimary,
+                      size: 20 * (1 + 0.1 * _shimmerController.value),
+                    );
+                  },
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Support the Developers',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
