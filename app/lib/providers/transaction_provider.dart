@@ -199,17 +199,13 @@ class TransactionProvider with ChangeNotifier {
             t.accountNumber != null &&
             account.accountNumber.length >= 4) {
           // CBE check: last 4 digits
-          print(
-              "debug: CBE check: ${t.accountNumber} == ${account.accountNumber.substring(account.accountNumber.length - 4)}");
+
           return t.accountNumber?.substring(t.accountNumber!.length - 4) ==
               account.accountNumber.substring(account.accountNumber.length - 4);
         }
         if (account.bank == 4 &&
             t.accountNumber != null &&
             account.accountNumber.length >= 3) {
-          // Dashen check: last 3 digits
-          print(
-              "debug: CBE check: ${t.accountNumber} == ${account.accountNumber.substring(account.accountNumber.length - 3)}");
           return t.accountNumber?.substring(t.accountNumber!.length - 3) ==
               account.accountNumber.substring(account.accountNumber.length - 3);
         }
@@ -217,8 +213,7 @@ class TransactionProvider with ChangeNotifier {
             t.accountNumber != null &&
             account.accountNumber.length >= 2) {
           // Bank of Abyssinia check: last 2 digits
-          print(
-              "debug: CBE check: ${t.accountNumber} == ${account.accountNumber.substring(account.accountNumber.length - 2)}");
+
           return t.accountNumber?.substring(t.accountNumber!.length - 2) ==
               account.accountNumber.substring(account.accountNumber.length - 2);
         } else {

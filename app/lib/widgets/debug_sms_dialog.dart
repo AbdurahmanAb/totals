@@ -42,7 +42,7 @@ Future<void> showDebugSmsDialog(BuildContext context) async {
             onPressed: () async {
               final address = addressController.text;
               final body = bodyController.text;
-              if (SmsService.isRelevantMessage(address)) {
+              if (await SmsService.isRelevantMessage(address)) {
                 await SmsService.processMessage(body, address);
                 if (context.mounted) {
                   Navigator.pop(context);

@@ -1,6 +1,7 @@
 import 'package:another_telephony/telephony.dart';
-import 'package:totals/data/consts.dart';
+import 'package:totals/models/bank.dart';
 import 'package:totals/services/sms_config_service.dart';
+import 'package:totals/services/bank_config_service.dart';
 import 'package:totals/utils/pattern_parser.dart';
 import 'package:totals/repositories/transaction_repository.dart';
 import 'package:totals/repositories/account_repository.dart';
@@ -25,7 +26,7 @@ onBackgroundMessage(SmsMessage message) async {
     }
 
     print("debug: BG: Checking if relevant...");
-    if (SmsService.isRelevantMessage(address)) {
+    if (await SmsService.isRelevantMessage(address)) {
       print("debug: BG: Message IS relevant. Processing...");
       await SmsService.processMessage(body, address!);
       print("debug: BG: Processing finished.");
@@ -40,6 +41,8 @@ onBackgroundMessage(SmsMessage message) async {
 
 class SmsService {
   final Telephony _telephony = Telephony.instance;
+  static final BankConfigService _bankConfigService = BankConfigService();
+  static List<Bank>? _cachedBanks;
 
   // Callback to notify UI to refresh
   Function()? onMessageReceived;
@@ -61,7 +64,7 @@ class SmsService {
     if (message.body == null) return;
 
     try {
-      if (SmsService.isRelevantMessage(message.address)) {
+      if (await SmsService.isRelevantMessage(message.address)) {
         await SmsService.processMessage(message.body!, message.address!);
         if (onMessageReceived != null) {
           onMessageReceived!();
@@ -73,15 +76,22 @@ class SmsService {
   }
 
   /// Checks if the message address matches any of our known bank codes.
-  static bool isRelevantMessage(String? address) {
+  static Future<bool> isRelevantMessage(String? address) async {
     if (address == null) return false;
-    return getRelevantBank(address) != null;
+    final bank = await getRelevantBank(address);
+    return bank != null;
   }
 
   /// Identifies the bank associated with the sender address.
-  static Bank? getRelevantBank(String? address) {
+  static Future<Bank?> getRelevantBank(String? address) async {
     if (address == null) return null;
-    for (var bank in AppConstants.banks) {
+
+    // Fetch banks from database (with static caching)
+    if (_cachedBanks == null) {
+      _cachedBanks = await _bankConfigService.getBanks();
+    }
+
+    for (var bank in _cachedBanks!) {
       for (var code in bank.codes) {
         if (address.contains(code)) {
           return bank;
@@ -124,7 +134,7 @@ class SmsService {
       {DateTime? messageDate}) async {
     print("debug: Processing message: $messageBody");
 
-    Bank? bank = getRelevantBank(senderAddress);
+    Bank? bank = await getRelevantBank(senderAddress);
     if (bank == null) {
       print(
           "dubg: No bank found for address $senderAddress - skipping processing.");

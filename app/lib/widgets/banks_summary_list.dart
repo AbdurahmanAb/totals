@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:totals/data/consts.dart';
+import 'package:totals/models/bank.dart';
 import 'package:totals/models/summary_models.dart';
 import 'package:totals/services/account_sync_status_service.dart';
 import 'package:totals/services/bank_detection_service.dart';
+import 'package:totals/services/bank_config_service.dart';
 import 'package:totals/utils/text_utils.dart';
 import 'package:totals/utils/gradients.dart';
 import 'package:totals/widgets/add_account_form.dart';
@@ -27,12 +28,28 @@ class BanksSummaryList extends StatefulWidget {
 
 class _BanksSummaryListState extends State<BanksSummaryList> {
   final BankDetectionService _detectionService = BankDetectionService();
+  final BankConfigService _bankConfigService = BankConfigService();
   List<DetectedBank> _unregisteredBanks = [];
+  List<Bank> _banks = [];
 
   @override
   void initState() {
     super.initState();
+    _loadBanks();
     _loadUnregisteredBanks();
+  }
+
+  Future<void> _loadBanks() async {
+    try {
+      final banks = await _bankConfigService.getBanks();
+      if (mounted) {
+        setState(() {
+          _banks = banks;
+        });
+      }
+    } catch (e) {
+      print("debug: Error loading banks: $e");
+    }
   }
 
   @override
@@ -135,8 +152,27 @@ class _BanksSummaryListState extends State<BanksSummaryList> {
   ) {
     final isSyncing = syncStatusService.hasAnyAccountSyncing(bank.bankId);
     final syncStatus = syncStatusService.getSyncStatusForBank(bank.bankId);
-    final bankInfo =
-        AppConstants.banks.firstWhere((element) => element.id == bank.bankId);
+
+    // Find bank info from cached banks
+    Bank? bankInfo;
+    try {
+      bankInfo = _banks.firstWhere((element) => element.id == bank.bankId);
+    } catch (e) {
+      // Bank not found, return placeholder
+      return Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: Colors.grey.withOpacity(0.2),
+        ),
+        child: Center(
+          child: Text(
+            'Bank ${bank.bankId}',
+            style: const TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+    }
+
     final gradient = GradientUtils.getGradient(bank.bankId);
 
     return Container(

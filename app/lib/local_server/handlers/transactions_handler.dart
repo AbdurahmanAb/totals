@@ -1,15 +1,18 @@
 import 'dart:convert';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
-import 'package:totals/data/consts.dart';
+import 'package:totals/models/bank.dart';
 import 'package:totals/models/transaction.dart';
 import 'package:totals/repositories/transaction_repository.dart';
 import 'package:totals/repositories/account_repository.dart';
+import 'package:totals/services/bank_config_service.dart';
 
 /// Handler for transaction-related API endpoints
 class TransactionsHandler {
   final TransactionRepository _transactionRepo = TransactionRepository();
   final AccountRepository _accountRepo = AccountRepository();
+  final BankConfigService _bankConfigService = BankConfigService();
+  List<Bank>? _cachedBanks;
 
   /// Returns a configured router with all transaction routes
   Router get router {
@@ -82,9 +85,9 @@ class TransactionsHandler {
       transactions = transactions.skip(offset).take(limit).toList();
 
       // Enrich with bank info
-      final enrichedTransactions = transactions.map((t) {
-        return _enrichTransactionWithBankInfo(t);
-      }).toList();
+      final enrichedTransactions = await Future.wait(
+        transactions.map((t) => _enrichTransactionWithBankInfo(t)),
+      );
 
       return Response.ok(
         jsonEncode({
@@ -116,24 +119,26 @@ class TransactionsHandler {
       }
 
       // Calculate stats for each bank
-      final byAccount = groupedByBank.entries.map((entry) {
-        final bankId = entry.key;
-        final bankTransactions = entry.value;
-        final bank = _getBankById(bankId);
+      final byAccount = await Future.wait(
+        groupedByBank.entries.map((entry) async {
+          final bankId = entry.key;
+          final bankTransactions = entry.value;
+          final bank = await _getBankById(bankId);
 
-        double volume = 0;
-        for (var t in bankTransactions) {
-          volume += t.amount.abs();
-        }
+          double volume = 0;
+          for (var t in bankTransactions) {
+            volume += t.amount.abs();
+          }
 
-        return {
-          'bankId': bankId,
-          'name': bank?.shortName ?? 'Unknown',
-          'bankName': bank?.name ?? 'Unknown Bank',
-          'volume': volume,
-          'count': bankTransactions.length,
-        };
-      }).toList();
+          return {
+            'bankId': bankId,
+            'name': bank?.shortName ?? 'Unknown',
+            'bankName': bank?.name ?? 'Unknown Bank',
+            'volume': volume,
+            'count': bankTransactions.length,
+          };
+        }),
+      );
 
       // Calculate totals
       double totalVolume = 0;
@@ -288,9 +293,11 @@ class TransactionsHandler {
   }
 
   /// Enriches a Transaction with bank name
-  Map<String, dynamic> _enrichTransactionWithBankInfo(Transaction transaction) {
-    final bank =
-        transaction.bankId != null ? _getBankById(transaction.bankId!) : null;
+  Future<Map<String, dynamic>> _enrichTransactionWithBankInfo(
+      Transaction transaction) async {
+    final bank = transaction.bankId != null
+        ? await _getBankById(transaction.bankId!)
+        : null;
 
     return {
       'amount': transaction.amount,
@@ -310,10 +317,14 @@ class TransactionsHandler {
     };
   }
 
-  /// Finds a bank by ID from AppConstants
-  Bank? _getBankById(int bankId) {
+  /// Finds a bank by ID from the database
+  Future<Bank?> _getBankById(int bankId) async {
     try {
-      return AppConstants.banks.firstWhere((b) => b.id == bankId);
+      // Fetch banks from database (with caching)
+      if (_cachedBanks == null) {
+        _cachedBanks = await _bankConfigService.getBanks();
+      }
+      return _cachedBanks!.firstWhere((b) => b.id == bankId);
     } catch (e) {
       return null;
     }

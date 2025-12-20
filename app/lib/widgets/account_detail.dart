@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:totals/models/summary_models.dart';
-import 'package:totals/data/consts.dart';
+import 'package:totals/models/bank.dart';
+import 'package:totals/services/bank_config_service.dart';
 import 'package:intl/intl.dart';
 
 import 'package:totals/models/transaction.dart';
@@ -29,12 +30,29 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
   late DateTime _startDate;
   late DateTime _endDate;
 
+  final BankConfigService _bankConfigService = BankConfigService();
+  List<Bank> _banks = [];
+
   @override
   void initState() {
     super.initState();
     // Default to last 30 days
     _endDate = DateTime.now();
     _startDate = _endDate.subtract(const Duration(days: 30));
+    _loadBanks();
+  }
+
+  Future<void> _loadBanks() async {
+    try {
+      final banks = await _bankConfigService.getBanks();
+      if (mounted) {
+        setState(() {
+          _banks = banks;
+        });
+      }
+    } catch (e) {
+      print("debug: Error loading banks: $e");
+    }
   }
 
   Future<void> _selectDateRange() async {
@@ -63,6 +81,14 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
         _startDate = picked.start;
         _endDate = picked.end;
       });
+    }
+  }
+
+  Bank? _getBankInfo() {
+    try {
+      return _banks.firstWhere((element) => element.id == widget.bankId);
+    } catch (e) {
+      return null;
     }
   }
 
@@ -281,10 +307,8 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
                                     child: ClipRRect(
                                       borderRadius: BorderRadius.circular(12),
                                       child: Image.asset(
-                                        AppConstants.banks
-                                            .firstWhere((element) =>
-                                                element.id == widget.bankId)
-                                            .image,
+                                        _getBankInfo()?.image ??
+                                            "assets/images/cbe.png",
                                         fit: BoxFit.cover,
                                       ),
                                     ),
@@ -303,11 +327,8 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
                                           children: [
                                             Expanded(
                                               child: Text(
-                                                AppConstants.banks
-                                                    .firstWhere((element) =>
-                                                        element.id ==
-                                                        widget.bankId)
-                                                    .name,
+                                                _getBankInfo()?.name ??
+                                                    "Unknown Bank",
                                                 style: const TextStyle(
                                                   fontSize: 16,
                                                   color: Color(0xFFF7F8FB),

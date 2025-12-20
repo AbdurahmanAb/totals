@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:totals/providers/transaction_provider.dart';
+import 'package:totals/services/bank_config_service.dart';
 import 'package:totals/services/sms_service.dart';
 import 'package:totals/widgets/auth_page.dart';
 import 'package:totals/widgets/home_tabs.dart';
@@ -9,10 +10,7 @@ import 'package:totals/widgets/banks_summary_list.dart';
 import 'package:totals/widgets/bank_detail.dart';
 import 'package:totals/widgets/add_account_form.dart';
 import 'package:totals/widgets/total_balance_card.dart';
-import 'package:totals/widgets/debug_sms_dialog.dart';
-import 'package:totals/widgets/debug_transactions_dialog.dart';
 import 'package:totals/widgets/failed_parse_dialog.dart';
-import 'package:totals/widgets/clear_database_dialog.dart';
 import 'package:totals/services/sms_config_service.dart';
 import 'package:totals/widgets/custom_bottom_nav.dart';
 import 'package:totals/widgets/detected_banks_widget.dart';
@@ -208,8 +206,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 onRefresh: () async {
                   // Sync regex patterns from remote
                   final configService = SmsConfigService();
+                  final bankConfigService = BankConfigService();
                   try {
                     await configService.syncRemoteConfig();
+                    await bankConfigService.syncRemoteConfig();
                   } catch (e) {
                     print("debug: Error syncing patterns: $e");
                   }
@@ -368,6 +368,41 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            const SizedBox(width: 4),
+                            // Debug menu button
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceVariant
+                                    .withOpacity(0.5),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: PopupMenuButton<String>(
+                                icon: Icon(Icons.bug_report_outlined,
+                                    color: Theme.of(context).iconTheme.color,
+                                    size: 22),
+                                padding: const EdgeInsets.all(8),
+                                constraints: const BoxConstraints(),
+                                onSelected: (value) {
+                                  if (value == 'failed_parse') {
+                                    showFailedParseDialog(context);
+                                  }
+                                },
+                                itemBuilder: (context) => [
+                                  const PopupMenuItem(
+                                    value: 'failed_parse',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.error_outline, size: 20),
+                                        SizedBox(width: 8),
+                                        Text('Failed Parses'),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                             const SizedBox(width: 4),
                             // Lock button
                             Container(

@@ -98,14 +98,12 @@ class PatternParser {
           print("debug: reference ${extracted["reference"]}");
           print("debug: receiver ${extracted["receiver"]}");
 
-          if ((pattern.bankId == 4 || pattern.bankId == 2) &&
-              extracted["reference"] == null) {
+          if (pattern.refRequired == false && extracted["reference"] == null) {
             extracted["reference"] = DateTime.now().toIso8601String();
           }
           // Validate required fields
-          if ((pattern.bankId == 1 ||
-                  pattern.bankId == 3 ||
-                  pattern.bankId == 4) &&
+          if (pattern.refRequired == true &&
+              pattern.hasAccount == true &&
               (extracted['amount'] == null ||
                   extracted['currentBalance'] == null ||
                   extracted['accountNumber'] == null ||

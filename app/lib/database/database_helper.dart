@@ -19,7 +19,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 7,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -67,7 +67,23 @@ class DatabaseHelper {
         senderId TEXT NOT NULL,
         regex TEXT NOT NULL,
         type TEXT NOT NULL,
-        description TEXT
+        description TEXT,
+        refRequired INTEGER,
+        hasAccount INTEGER
+      )
+    ''');
+
+    // Banks table
+    await db.execute('''
+      CREATE TABLE banks (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        shortName TEXT NOT NULL,
+        codes TEXT NOT NULL,
+        image TEXT NOT NULL,
+        maskPattern INTEGER,
+        uniformMasking INTEGER,
+        simBased INTEGER
       )
     ''');
 
@@ -90,8 +106,8 @@ class DatabaseHelper {
         'CREATE INDEX idx_transactions_reference ON transactions(reference)');
     await db.execute(
         'CREATE INDEX idx_transactions_bankId ON transactions(bankId)');
-    await db.execute(
-        'CREATE INDEX idx_transactions_time ON transactions(time)');
+    await db
+        .execute('CREATE INDEX idx_transactions_time ON transactions(time)');
     await db.execute(
         'CREATE INDEX idx_transactions_year_month ON transactions(year, month)');
     await db.execute(
@@ -147,7 +163,7 @@ class DatabaseHelper {
         await db.execute('ALTER TABLE transactions ADD COLUMN month INTEGER');
         await db.execute('ALTER TABLE transactions ADD COLUMN day INTEGER');
         await db.execute('ALTER TABLE transactions ADD COLUMN week INTEGER');
-        
+
         // Create indexes for date queries
         await db.execute(
             'CREATE INDEX IF NOT EXISTS idx_transactions_time ON transactions(time)');
@@ -157,13 +173,14 @@ class DatabaseHelper {
             'CREATE INDEX IF NOT EXISTS idx_transactions_year_month_day ON transactions(year, month, day)');
         await db.execute(
             'CREATE INDEX IF NOT EXISTS idx_transactions_bank_year_month ON transactions(bankId, year, month)');
-        
+
         print("debug: Added date columns and indexes to transactions table");
-        
+
         // Populate date columns for existing transactions
-        final transactions = await db.query('transactions', columns: ['id', 'time']);
+        final transactions =
+            await db.query('transactions', columns: ['id', 'time']);
         final batch = db.batch();
-        
+
         for (var tx in transactions) {
           if (tx['time'] != null) {
             try {
@@ -180,15 +197,61 @@ class DatabaseHelper {
                 whereArgs: [tx['id']],
               );
             } catch (e) {
-              print("debug: Error parsing date for transaction ${tx['id']}: $e");
+              print(
+                  "debug: Error parsing date for transaction ${tx['id']}: $e");
             }
           }
         }
-        
+
         await batch.commit(noResult: true);
         print("debug: Populated date columns for existing transactions");
       } catch (e) {
         print("debug: Error adding date columns (might already exist): $e");
+      }
+    }
+
+    if (oldVersion < 5) {
+      // Add refRequired column to sms_patterns table for version 5
+      try {
+        await db
+            .execute('ALTER TABLE sms_patterns ADD COLUMN refRequired INTEGER');
+        print("debug: Added refRequired column to sms_patterns table");
+      } catch (e) {
+        print(
+            "debug: Error adding refRequired column (might already exist): $e");
+      }
+    }
+
+    if (oldVersion < 6) {
+      // Add hasAccount column to sms_patterns table for version 6
+      try {
+        await db
+            .execute('ALTER TABLE sms_patterns ADD COLUMN hasAccount INTEGER');
+        print("debug: Added hasAccount column to sms_patterns table");
+      } catch (e) {
+        print(
+            "debug: Error adding hasAccount column (might already exist): $e");
+      }
+    }
+
+    if (oldVersion < 7) {
+      // Add banks table for version 7
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS banks (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            shortName TEXT NOT NULL,
+            codes TEXT NOT NULL,
+            image TEXT NOT NULL,
+            maskPattern INTEGER,
+            uniformMasking INTEGER,
+            simBased INTEGER
+          )
+        ''');
+        print("debug: Added banks table");
+      } catch (e) {
+        print("debug: Error adding banks table (might already exist): $e");
       }
     }
   }

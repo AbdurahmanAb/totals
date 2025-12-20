@@ -1,9 +1,10 @@
 import 'package:another_telephony/telephony.dart';
-import 'package:totals/data/consts.dart';
 import 'package:totals/models/account.dart';
+import 'package:totals/models/bank.dart';
 import 'package:totals/repositories/account_repository.dart';
 import 'package:totals/services/sms_service.dart';
 import 'package:totals/services/sms_config_service.dart';
+import 'package:totals/services/bank_config_service.dart';
 import 'package:totals/services/account_sync_status_service.dart';
 import 'package:totals/utils/pattern_parser.dart';
 
@@ -11,6 +12,8 @@ class AccountRegistrationService {
   final AccountRepository _accountRepo = AccountRepository();
   final AccountSyncStatusService _syncStatusService =
       AccountSyncStatusService.instance;
+  final BankConfigService _bankConfigService = BankConfigService();
+  List<Bank>? _cachedBanks;
 
   /// Registers a new account and optionally syncs previous SMS messages
   /// Returns the account if created successfully
@@ -65,7 +68,13 @@ class AccountRegistrationService {
     _syncStatusService.setSyncStatus(
         accountNumber, bankId, "Finding bank messages...");
     onProgress?.call("Finding bank messages...", 0.3);
-    final bank = AppConstants.banks.firstWhere(
+
+    // Fetch banks from database (with caching)
+    if (_cachedBanks == null) {
+      _cachedBanks = await _bankConfigService.getBanks();
+    }
+
+    final bank = _cachedBanks!.firstWhere(
       (element) => element.id == bankId,
       orElse: () => throw Exception("Bank with id $bankId not found"),
     );

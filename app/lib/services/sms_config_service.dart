@@ -124,10 +124,10 @@ class SmsConfigService {
   ];
   void debugSms(String smsText) {
     // Show invisible characters
-    print("Raw SMS (escaped): ${jsonEncode(smsText)}");
+    // print("Raw SMS (escaped): ${jsonEncode(smsText)}");
 
-    // Optionally show code units for each character
-    print("Code units: ${smsText.codeUnits}");
+    // // Optionally show code units for each character
+    // print("Code units: ${smsText.codeUnits}");
   }
 
   String cleanSmsText(String text) {
@@ -158,6 +158,10 @@ class SmsConfigService {
             'regex': map['regex'],
             'type': map['type'],
             'description': map['description'],
+            'refRequired':
+                map['refRequired'] == null ? null : (map['refRequired'] == 1),
+            'hasAccount':
+                map['hasAccount'] == null ? null : (map['hasAccount'] == 1),
           });
         }).toList();
         print("debug: Loaded ${patterns.length} patterns from database");
@@ -255,7 +259,6 @@ class SmsConfigService {
               .map((item) => SmsPattern.fromJson(item as Map<String, dynamic>))
               .toList();
         }
-
         print("debug: Fetched ${patterns.length} patterns from remote");
         return patterns;
       } else {
@@ -282,6 +285,10 @@ class SmsConfigService {
         'regex': pattern.regex,
         'type': pattern.type,
         'description': pattern.description,
+        'refRequired':
+            pattern.refRequired == null ? null : (pattern.refRequired! ? 1 : 0),
+        'hasAccount':
+            pattern.hasAccount == null ? null : (pattern.hasAccount! ? 1 : 0),
       });
     }
     await batch.commit(noResult: true);

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:totals/data/consts.dart';
+import 'package:totals/models/bank.dart';
 import 'package:totals/services/bank_detection_service.dart';
 import 'package:totals/widgets/add_account_form.dart';
 
