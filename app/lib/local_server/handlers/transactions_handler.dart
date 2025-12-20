@@ -68,7 +68,7 @@ class TransactionsHandler {
       transactions = await _filterOrphanedTransactions(transactions);
 
       // Apply filters
-      transactions = _applyFilters(
+      transactions = await _applyFilters(
         transactions,
         bankId: bankId,
         accountNumber: accountNumber,
@@ -167,6 +167,7 @@ class TransactionsHandler {
   Future<List<Transaction>> _filterOrphanedTransactions(
       List<Transaction> transactions) async {
     final accounts = await _accountRepo.getAccounts();
+    final banks = await _bankConfigService.getBanks();
 
     return transactions.where((t) {
       if (t.bankId == null) return false;
@@ -177,23 +178,14 @@ class TransactionsHandler {
       if (t.accountNumber != null && t.accountNumber!.isNotEmpty) {
         for (var account in bankAccounts) {
           bool matches = false;
+          final bank = banks.firstWhere((b) => b.id == t.bankId);
 
-          if (account.bank == 1 && account.accountNumber.length >= 4) {
-            matches = t.accountNumber!.length >= 4 &&
-                t.accountNumber!.substring(t.accountNumber!.length - 4) ==
-                    account.accountNumber
-                        .substring(account.accountNumber.length - 4);
-          } else if (account.bank == 4 && account.accountNumber.length >= 3) {
-            matches = t.accountNumber!.length >= 3 &&
-                t.accountNumber!.substring(t.accountNumber!.length - 3) ==
-                    account.accountNumber
-                        .substring(account.accountNumber.length - 3);
-          } else if (account.bank == 3 && account.accountNumber.length >= 2) {
-            matches = t.accountNumber!.length >= 2 &&
-                t.accountNumber!.substring(t.accountNumber!.length - 2) ==
-                    account.accountNumber
-                        .substring(account.accountNumber.length - 2);
-          } else if (account.bank == 2 || account.bank == 6) {
+          if (bank.uniformMasking == true) {
+            matches = t.accountNumber!
+                    .substring(t.accountNumber!.length - bank.maskPattern!) ==
+                account.accountNumber.substring(
+                    account.accountNumber.length - bank.maskPattern!);
+          } else if (bank.uniformMasking == false) {
             matches = true;
           } else {
             matches = t.accountNumber == account.accountNumber;
@@ -209,7 +201,7 @@ class TransactionsHandler {
   }
 
   /// Apply filters to the transaction list
-  List<Transaction> _applyFilters(
+  Future<List<Transaction>> _applyFilters(
     List<Transaction> transactions, {
     int? bankId,
     String? accountNumber,
@@ -217,7 +209,8 @@ class TransactionsHandler {
     String? status,
     String? fromDate,
     String? toDate,
-  }) {
+  }) async {
+    final banks = await _bankConfigService.getBanks();
     return transactions.where((t) {
       // Filter by bankId
       if (bankId != null && t.bankId != bankId) {
@@ -229,26 +222,14 @@ class TransactionsHandler {
         bool matchesAccount = false;
         // This will be validated against accounts, so we can use simple matching here
         if (t.accountNumber != null) {
-          if (bankId == 1 &&
-              accountNumber.length >= 4 &&
-              t.accountNumber!.length >= 4) {
-            matchesAccount =
-                t.accountNumber!.substring(t.accountNumber!.length - 4) ==
-                    accountNumber.substring(accountNumber.length - 4);
-          } else if (bankId == 4 &&
-              accountNumber.length >= 3 &&
-              t.accountNumber!.length >= 3) {
-            matchesAccount =
-                t.accountNumber!.substring(t.accountNumber!.length - 3) ==
-                    accountNumber.substring(accountNumber.length - 3);
-          } else if (bankId == 3 &&
-              accountNumber.length >= 2 &&
-              t.accountNumber!.length >= 2) {
-            matchesAccount =
-                t.accountNumber!.substring(t.accountNumber!.length - 2) ==
-                    accountNumber.substring(accountNumber.length - 2);
-          } else if (bankId == 2 || bankId == 6) {
-            matchesAccount = true; // Match by bankId only
+          final bank = banks.firstWhere((b) => b.id == t.bankId);
+          if (bank.uniformMasking == true) {
+            matchesAccount = t.accountNumber!
+                    .substring(t.accountNumber!.length - bank.maskPattern!) ==
+                accountNumber
+                    .substring(accountNumber.length - bank.maskPattern!);
+          } else if (bank.uniformMasking == false) {
+            matchesAccount = true;
           } else {
             matchesAccount = t.accountNumber == accountNumber;
           }

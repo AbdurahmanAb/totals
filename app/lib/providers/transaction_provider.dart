@@ -6,11 +6,13 @@ import 'package:totals/models/summary_models.dart';
 import 'package:totals/repositories/account_repository.dart';
 import 'package:totals/repositories/category_repository.dart';
 import 'package:totals/repositories/transaction_repository.dart';
+import 'package:totals/services/bank_config_service.dart';
 
 class TransactionProvider with ChangeNotifier {
   final TransactionRepository _transactionRepo = TransactionRepository();
   final AccountRepository _accountRepo = AccountRepository();
   final CategoryRepository _categoryRepo = CategoryRepository();
+  final BankConfigService _bankConfigService = BankConfigService();
 
   List<Transaction> _transactions = [];
   List<Account> _accounts = [];
@@ -62,7 +64,7 @@ class TransactionProvider with ChangeNotifier {
       _allTransactions = await _transactionRepo.getTransactions();
       print("debug: Transactions: ${_allTransactions.length}");
 
-      _calculateSummaries(_allTransactions);
+      await _calculateSummaries(_allTransactions);
       _filterTransactions(_allTransactions);
     } catch (e) {
       print("debug: Error loading data: $e");
@@ -82,7 +84,9 @@ class TransactionProvider with ChangeNotifier {
     loadData();
   }
 
-  void _calculateSummaries(List<Transaction> allTransactions) {
+  Future<void> _calculateSummaries(List<Transaction> allTransactions) async {
+    final banks = await _bankConfigService.getBanks();
+
     // Filter out transactions that don't have a matching account (orphaned transactions)
     final validTransactions = allTransactions.where((t) {
       if (t.bankId == null) return false;
@@ -95,26 +99,15 @@ class TransactionProvider with ChangeNotifier {
       if (t.accountNumber != null && t.accountNumber!.isNotEmpty) {
         for (var account in bankAccounts) {
           bool matches = false;
+          final bank = banks.firstWhere((b) => b.id == t.bankId);
 
-          if (account.bank == 1 && account.accountNumber.length >= 4) {
+          if (bank.uniformMasking == true) {
             // CBE: match last 4 digits
-            matches = t.accountNumber!.length >= 4 &&
-                t.accountNumber!.substring(t.accountNumber!.length - 4) ==
-                    account.accountNumber
-                        .substring(account.accountNumber.length - 4);
-          } else if (account.bank == 4 && account.accountNumber.length >= 3) {
-            // Dashen: match last 3 digits
-            matches = t.accountNumber!.length >= 3 &&
-                t.accountNumber!.substring(t.accountNumber!.length - 3) ==
-                    account.accountNumber
-                        .substring(account.accountNumber.length - 3);
-          } else if (account.bank == 3 && account.accountNumber.length >= 2) {
-            // Bank of Abyssinia: match last 2 digits
-            matches = t.accountNumber!.length >= 2 &&
-                t.accountNumber!.substring(t.accountNumber!.length - 2) ==
-                    account.accountNumber
-                        .substring(account.accountNumber.length - 2);
-          } else if (account.bank == 2 || account.bank == 6) {
+            matches = t.accountNumber!
+                    .substring(t.accountNumber!.length - bank.maskPattern!) ==
+                account.accountNumber.substring(
+                    account.accountNumber.length - bank.maskPattern!);
+          } else if (bank.uniformMasking == false) {
             // Awash/Telebirr: match by bankId only
             matches = true;
           } else {
@@ -213,27 +206,15 @@ class TransactionProvider with ChangeNotifier {
         bool bankMatch = t.bankId == account.bank;
         if (!bankMatch) return false;
 
-        if (account.bank == 1 &&
-            t.accountNumber != null &&
-            account.accountNumber.length >= 4) {
+        final bank = banks.firstWhere((b) => b.id == t.bankId);
+
+        if (bank.uniformMasking == true) {
           // CBE check: last 4 digits
 
-          return t.accountNumber?.substring(t.accountNumber!.length - 4) ==
-              account.accountNumber.substring(account.accountNumber.length - 4);
-        }
-        if (account.bank == 4 &&
-            t.accountNumber != null &&
-            account.accountNumber.length >= 3) {
-          return t.accountNumber?.substring(t.accountNumber!.length - 3) ==
-              account.accountNumber.substring(account.accountNumber.length - 3);
-        }
-        if (account.bank == 3 &&
-            t.accountNumber != null &&
-            account.accountNumber.length >= 2) {
-          // Bank of Abyssinia check: last 2 digits
-
-          return t.accountNumber?.substring(t.accountNumber!.length - 2) ==
-              account.accountNumber.substring(account.accountNumber.length - 2);
+          return t.accountNumber
+                  ?.substring(t.accountNumber!.length - bank.maskPattern!) ==
+              account.accountNumber
+                  .substring(account.accountNumber.length - bank.maskPattern!);
         } else {
           return t.bankId == account.bank;
         }

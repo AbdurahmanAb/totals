@@ -35,7 +35,9 @@ onBackgroundMessage(SmsMessage message) async {
     print("debug: BG: Checking if relevant...");
     if (await SmsService.isRelevantMessage(address)) {
       print("debug: BG: Message IS relevant. Processing...");
-      await SmsService.processMessage(body, address!, notifyUser: true);
+      await SmsService.processMessage(body, address!,
+          notifyUser: true,
+          messageDate: DateTime.fromMillisecondsSinceEpoch(message.date!));
       print("debug: BG: Processing finished.");
     } else {
       print("debug: BG: Message NOT relevant.");
@@ -73,10 +75,9 @@ class SmsService {
     try {
       if (await SmsService.isRelevantMessage(message.address)) {
         final tx = await SmsService.processMessage(
-          message.body!,
-          message.address!,
-          notifyUser: true,
-        );
+            message.body!, message.address!,
+            notifyUser: true,
+            messageDate: DateTime.fromMillisecondsSinceEpoch(message.date!));
         if (tx != null && onTransactionSaved != null) {
           onTransactionSaved!(tx);
         }
@@ -163,9 +164,10 @@ class SmsService {
         patterns.where((p) => p.bankId == bank.id).toList();
     // 2. Parse
     configService.debugSms(messageBody);
-    var details = PatternParser.extractTransactionDetails(
+    var details = await PatternParser.extractTransactionDetails(
         configService.cleanSmsText(messageBody),
         senderAddress,
+        messageDate,
         relevantPatterns);
 
     if (details == null) {
@@ -234,23 +236,13 @@ class SmsService {
       String extractedAccount = details['accountNumber'];
 
       int index = -1;
-      if (bankId == 1) {
+      final banks = await _bankConfigService.getBanks();
+      final bank = banks.firstWhere((b) => b.id == bankId);
+      if (bank.uniformMasking == true) {
         index = accounts.indexWhere((a) {
           if (a.bank != bankId) return false;
-          return a.accountNumber.endsWith(
-              extractedAccount.substring(extractedAccount.length - 4));
-        });
-      } else if (bankId == 3) {
-        index = accounts.indexWhere((a) {
-          if (a.bank != bankId) return false;
-          return a.accountNumber.endsWith(
-              extractedAccount.substring(extractedAccount.length - 2));
-        });
-      } else if (bankId == 4) {
-        index = accounts.indexWhere((a) {
-          if (a.bank != bankId) return false;
-          return a.accountNumber.endsWith(
-              extractedAccount.substring(extractedAccount.length - 3));
+          return a.accountNumber.endsWith(extractedAccount
+              .substring(extractedAccount.length - bank.maskPattern!));
         });
       }
 

@@ -196,9 +196,10 @@ class AccountRegistrationService {
           try {
             // Check if message matches any pattern
             final cleanedBody = configService.cleanSmsText(message.body!);
-            final details = PatternParser.extractTransactionDetails(
+            final details = await PatternParser.extractTransactionDetails(
               cleanedBody,
               message.address!,
+              DateTime.fromMillisecondsSinceEpoch(message.date!),
               relevantPatterns,
             );
 
@@ -306,23 +307,13 @@ class AccountRegistrationService {
         }
       } else if (extractedAccountNumber != null) {
         int index = -1;
-        if (bankId == 1) {
+        final banks = await _bankConfigService.getBanks();
+        final bank = banks.firstWhere((b) => b.id == bankId);
+        if (bank.uniformMasking == true) {
           index = accounts.indexWhere((a) {
             if (a.bank != bankId) return false;
             return a.accountNumber.endsWith(extractedAccountNumber
-                .substring(extractedAccountNumber.length - 4));
-          });
-        } else if (bankId == 3) {
-          index = accounts.indexWhere((a) {
-            if (a.bank != bankId) return false;
-            return a.accountNumber.endsWith(extractedAccountNumber
-                .substring(extractedAccountNumber.length - 2));
-          });
-        } else if (bankId == 4) {
-          index = accounts.indexWhere((a) {
-            if (a.bank != bankId) return false;
-            return a.accountNumber.endsWith(extractedAccountNumber
-                .substring(extractedAccountNumber.length - 3));
+                .substring(extractedAccountNumber.length - bank.maskPattern!));
           });
         }
 

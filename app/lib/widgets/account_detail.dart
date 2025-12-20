@@ -116,7 +116,8 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
       List<Transaction> transactions = provider.allTransactions.where((t) {
         if (t.bankId != widget.bankId) return false;
         // CBE check: last 4 digits
-        if (widget.bankId == 1 && widget.accountNumber.length >= 4) {
+        final bank = _banks.firstWhere((b) => b.id == widget.bankId);
+        if (bank.uniformMasking == true) {
           return widget.accountNumber.endsWith(
               t.accountNumber!.substring(t.accountNumber!.length - 4));
         } else if (widget.bankId == 3 && widget.accountNumber.length >= 2) {

@@ -1,10 +1,14 @@
 import 'package:totals/models/sms_pattern.dart';
+import 'package:totals/services/bank_config_service.dart';
 
 class PatternParser {
   /// Iterates through [patterns] that match the [senderAddress].
   /// Returns a map of extracted data if a match is found, or null otherwise.
-  static Map<String, dynamic>? extractTransactionDetails(
-      String messageBody, String senderAddress, List<SmsPattern> patterns) {
+  static Future<Map<String, dynamic>?> extractTransactionDetails(
+      String messageBody,
+      String senderAddress,
+      DateTime? messageDate,
+      List<SmsPattern> patterns) async {
     String cleanBody = messageBody.trim();
 
     for (var pattern in patterns) {
@@ -45,22 +49,25 @@ class PatternParser {
             print("debug: Raw account value: '$raw'");
 
             if (raw != null) {
-              // specific cleanup for masked accounts (CBE style 1000***1234)
-              if (pattern.bankId == 1) {
-                extracted['accountNumber'] = raw.substring(raw.length - 4);
-                print(
-                    "Cleaned account (masked): ${extracted['accountNumber']}");
-              }
-              if (pattern.bankId == 3) {
-                extracted['accountNumber'] = raw.substring(raw.length - 2);
-                print(
-                    "Cleaned account (masked): ${extracted['accountNumber']}");
-              }
-              if (pattern.bankId == 4) {
-                extracted['accountNumber'] = raw.substring(raw.length - 3);
-                print(
-                    "Cleaned account (masked): ${extracted['accountNumber']}");
+              final BankConfigService bankConfigService = BankConfigService();
+              final banks = await bankConfigService.getBanks();
+              final bank = banks.firstWhere((b) => b.id == pattern.bankId);
+
+              // Use bank configuration for account extraction
+              if (bank.uniformMasking == true && bank.maskPattern != null) {
+                // Extract last N digits based on mask pattern
+                if (raw.length >= bank.maskPattern!) {
+                  extracted['accountNumber'] =
+                      raw.substring(raw.length - bank.maskPattern!);
+                  print(
+                      "Cleaned account (masked): ${extracted['accountNumber']}");
+                } else {
+                  extracted['accountNumber'] = raw;
+                  print(
+                      "Cleaned account (fallback): ${extracted['accountNumber']}");
+                }
               } else {
+                // No masking or uniformMasking is false - use full account number
                 extracted['accountNumber'] = raw;
                 print(
                     "Cleaned account (direct): ${extracted['accountNumber']}");
@@ -99,7 +106,9 @@ class PatternParser {
           print("debug: receiver ${extracted["receiver"]}");
 
           if (pattern.refRequired == false && extracted["reference"] == null) {
-            extracted["reference"] = DateTime.now().toIso8601String();
+            extracted["reference"] = pattern.bankId.toString() +
+                "_" +
+                messageDate!.toIso8601String();
           }
           // Validate required fields
           if (pattern.refRequired == true &&
