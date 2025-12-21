@@ -11,6 +11,7 @@ import 'package:totals/widgets/analytics/chart_container.dart';
 import 'package:totals/widgets/analytics/transactions_list.dart';
 import 'package:totals/widgets/analytics/chart_data_point.dart';
 import 'package:totals/widgets/analytics/chart_data_utils.dart';
+import 'package:totals/widgets/categorize_transaction_sheet.dart';
 
 class AnalyticsPage extends StatefulWidget {
   const AnalyticsPage({super.key});
@@ -481,6 +482,14 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     TransactionsList(
                       transactions: filteredTransactions,
                       sortBy: _sortBy,
+                      provider: provider,
+                      onTransactionTap: (transaction) async {
+                        await showCategorizeTransactionSheet(
+                          context: context,
+                          provider: provider,
+                          transaction: transaction,
+                        );
+                      },
                       onSortChanged: (sort) {
                         setState(() {
                           _sortBy = sort;

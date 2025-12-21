@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:totals/models/transaction.dart';
 import 'package:intl/intl.dart';
+import 'package:totals/models/bank.dart';
+import 'package:totals/models/transaction.dart';
+import 'package:totals/providers/transaction_provider.dart';
+import 'package:totals/services/bank_config_service.dart';
+import 'package:totals/utils/category_icons.dart';
 
 class TransactionsList extends StatefulWidget {
   final List<Transaction> transactions;
@@ -9,6 +13,7 @@ class TransactionsList extends StatefulWidget {
   final bool showHeader;
   final bool includeBottomPadding;
   final ValueChanged<Transaction>? onTransactionTap;
+  final TransactionProvider? provider;
 
   const TransactionsList({
     super.key,
@@ -18,6 +23,7 @@ class TransactionsList extends StatefulWidget {
     this.showHeader = true,
     this.includeBottomPadding = true,
     this.onTransactionTap,
+    this.provider,
   });
 
   @override
@@ -26,10 +32,46 @@ class TransactionsList extends StatefulWidget {
 
 class _TransactionsListState extends State<TransactionsList> {
   static const int _itemsPerPage = 10;
+  final BankConfigService _bankConfigService = BankConfigService();
   int _currentPage = 0;
+  Map<int, String> _bankLabelsById = {};
 
   String _formatCurrency(double amount) {
     return NumberFormat('#,##0.00').format(amount);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBanks();
+  }
+
+  Future<void> _loadBanks() async {
+    try {
+      final banks = await _bankConfigService.getBanks();
+      if (!mounted) return;
+      setState(() {
+        _bankLabelsById = {
+          for (final bank in banks)
+            bank.id: _bankLabelFor(bank),
+        };
+      });
+    } catch (e) {
+      // Keep fallback labels if bank config isn't available.
+    }
+  }
+
+  String _bankLabelFor(Bank bank) {
+    if (bank.shortName.trim().isNotEmpty) {
+      return bank.shortName;
+    }
+    return bank.name;
+  }
+
+  String _getBankLabel(Transaction transaction) {
+    final bankId = transaction.bankId;
+    if (bankId == null) return 'Unknown bank';
+    return _bankLabelsById[bankId] ?? 'Bank $bankId';
   }
 
   @override
@@ -178,6 +220,8 @@ class _TransactionsListState extends State<TransactionsList> {
             final transaction = paginatedTransactions[index];
             return _TransactionItem(
               transaction: transaction,
+              bankLabel: _getBankLabel(transaction),
+              provider: widget.provider,
               formatCurrency: _formatCurrency,
               onTap: widget.onTransactionTap != null
                   ? () => widget.onTransactionTap!(transaction)
@@ -365,11 +409,15 @@ class _PaginationButton extends StatelessWidget {
 
 class _TransactionItem extends StatelessWidget {
   final Transaction transaction;
+  final String bankLabel;
+  final TransactionProvider? provider;
   final String Function(double) formatCurrency;
   final VoidCallback? onTap;
 
   const _TransactionItem({
     required this.transaction,
+    required this.bankLabel,
+    required this.provider,
     required this.formatCurrency,
     required this.onTap,
   });
@@ -391,6 +439,13 @@ class _TransactionItem extends StatelessWidget {
         : 'Unknown date';
     final timeStr =
         dateTime != null ? DateFormat('hh:mm a').format(dateTime) : '';
+
+    final receiver = transaction.receiver?.trim();
+    final hasReceiver = receiver != null && receiver.isNotEmpty;
+
+    final category =
+        provider?.getCategoryById(transaction.categoryId);
+    final isIncomeCategory = category?.flow.toLowerCase() == 'income';
 
     return Material(
       color: Colors.transparent,
@@ -422,7 +477,7 @@ class _TransactionItem extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          transaction.reference,
+                          bankLabel,
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -431,14 +486,13 @@ class _TransactionItem extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        if (transaction.creditor != null ||
-                            transaction.receiver != null)
+                        if (hasReceiver)
                           const SizedBox(height: 4),
-                        if (transaction.creditor != null)
+                        if (hasReceiver)
                           Text(
-                            transaction.creditor!,
+                            'to $receiver',
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 12,
                               color: Theme.of(context)
                                   .colorScheme
                                   .onSurfaceVariant,
@@ -446,18 +500,30 @@ class _TransactionItem extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                        if (transaction.receiver != null)
-                          Text(
-                            transaction.receiver!,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                        if (provider != null) ...[
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: [
+                              _CategoryChip(
+                                label: category?.name ?? 'Uncategorized',
+                                icon: iconForCategoryKey(category?.iconKey),
+                                color: category == null
+                                    ? Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant
+                                    : (isIncomeCategory
+                                        ? (category.essential
+                                            ? Colors.green
+                                            : Colors.teal)
+                                        : (category.essential
+                                            ? Colors.blue
+                                            : Colors.orange)),
+                              ),
+                            ],
                           ),
+                        ],
                       ],
                     ),
                   ),
@@ -502,6 +568,44 @@ class _TransactionItem extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _CategoryChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  const _CategoryChip({
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }
