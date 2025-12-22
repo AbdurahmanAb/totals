@@ -186,17 +186,13 @@ class BankConfigService {
 
   // Initialize banks on app launch
   // Returns true if internet is needed but not available
+  // Only fetches if banks don't exist (no background sync)
   Future<bool> initializeBanks() async {
     final db = await DatabaseHelper.instance.database;
     final List<Map<String, dynamic>> maps = await db.query('banks');
 
-    // If banks exist, do background sync
+    // If banks exist, return (no sync - sync only happens on explicit refresh)
     if (maps.isNotEmpty) {
-      print("debug: Banks exist, doing background sync");
-      // Background sync (non-blocking)
-      syncRemoteConfig().catchError((e) {
-        print("debug: Background sync failed: $e");
-      });
       return false; // No internet needed, we have cached banks
     }
 

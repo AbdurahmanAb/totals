@@ -242,8 +242,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     if (value && !_hasCheckedInternet) {
       _hasCheckedInternet = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _checkInternetRequirement();
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await _checkInternetRequirement();
       });
     }
   }
@@ -314,8 +314,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   Future<void> _checkInternetRequirement() async {
     final configService = SmsConfigService();
-    final needsInternet = await configService.initializePatterns();
-    if (needsInternet && mounted) {
+    final bankConfigService = BankConfigService();
+
+    // Check if patterns and banks exist
+    final needsInternetForPatterns = await configService.initializePatterns();
+    final needsInternetForBanks = await bankConfigService.initializeBanks();
+
+    // If either needs internet and we don't have it, show dialog
+    if ((needsInternetForPatterns || needsInternetForBanks) && mounted) {
       _showInternetDialog();
     }
   }

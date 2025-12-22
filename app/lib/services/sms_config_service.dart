@@ -321,17 +321,13 @@ class SmsConfigService {
 
   // Initialize patterns on app launch
   // Returns true if internet is needed but not available
+  // Only fetches if patterns don't exist (no background sync)
   Future<bool> initializePatterns() async {
     final db = await DatabaseHelper.instance.database;
     final List<Map<String, dynamic>> maps = await db.query('sms_patterns');
 
-    // If patterns exist, do background sync
+    // If patterns exist, return (no sync - sync only happens on explicit refresh)
     if (maps.isNotEmpty) {
-      print("debug: Patterns exist, doing background sync");
-      // Background sync (non-blocking)
-      syncRemoteConfig().catchError((e) {
-        print("debug: Background sync failed: $e");
-      });
       return false; // No internet needed, we have cached patterns
     }
 
