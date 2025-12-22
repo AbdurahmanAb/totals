@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:totals/providers/transaction_provider.dart';
 import 'package:totals/models/transaction.dart';
 import 'package:totals/models/summary_models.dart';
+import 'package:totals/models/bank.dart';
+import 'package:totals/services/bank_config_service.dart';
 import 'package:intl/intl.dart';
 import 'package:totals/screens/transactions_for_period_page.dart';
 import 'package:totals/widgets/analytics/time_period_selector.dart';
@@ -34,11 +36,27 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   late PageController _timeFramePageController;
   bool _isTransitioning = false;
   final Map<String, DateTime?> _transactionDateCache = {};
+  final BankConfigService _bankConfigService = BankConfigService();
+  List<Bank> _banks = [];
 
   @override
   void initState() {
     super.initState();
     _timeFramePageController = PageController(initialPage: 1);
+    _loadBanks();
+  }
+
+  Future<void> _loadBanks() async {
+    try {
+      final banks = await _bankConfigService.getBanks();
+      if (mounted) {
+        setState(() {
+          _banks = banks;
+        });
+      }
+    } catch (e) {
+      print("debug: Error loading banks: $e");
+    }
   }
 
   @override
@@ -131,7 +149,9 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       List<AccountSummary> accounts) {
     final grouped = <int, List<AccountSummary>>{};
     for (final account in accounts) {
-      grouped.putIfAbsent(account.bankId, () => <AccountSummary>[]).add(account);
+      grouped
+          .putIfAbsent(account.bankId, () => <AccountSummary>[])
+          .add(account);
     }
     return grouped;
   }
@@ -152,25 +172,29 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     );
   }
 
-  bool _matchesSelectedAccount(Transaction transaction, AccountSummary account) {
+  bool _matchesSelectedAccount(
+      Transaction transaction, AccountSummary account) {
     final txnAccount = transaction.accountNumber;
     if (txnAccount == null || txnAccount.isEmpty) {
       return transaction.bankId == account.bankId;
     }
 
-    if (account.bankId == 1 && account.accountNumber.length >= 4) {
-      if (txnAccount.length < 4) return transaction.bankId == account.bankId;
-      return txnAccount.substring(txnAccount.length - 4) ==
-          account.accountNumber.substring(account.accountNumber.length - 4);
-    } else if (account.bankId == 4 && account.accountNumber.length >= 3) {
-      if (txnAccount.length < 3) return transaction.bankId == account.bankId;
-      return txnAccount.substring(txnAccount.length - 3) ==
-          account.accountNumber.substring(account.accountNumber.length - 3);
-    } else if (account.bankId == 3 && account.accountNumber.length >= 2) {
-      if (txnAccount.length < 2) return transaction.bankId == account.bankId;
-      return txnAccount.substring(txnAccount.length - 2) ==
-          account.accountNumber.substring(account.accountNumber.length - 2);
-    } else {
+    try {
+      final bank = _banks.firstWhere((b) => b.id == account.bankId);
+
+      if (bank.uniformMasking == true && bank.maskPattern != null) {
+        return txnAccount.substring(txnAccount.length - bank.maskPattern!) ==
+            account.accountNumber
+                .substring(account.accountNumber.length - bank.maskPattern!);
+      } else if (bank.uniformMasking == false) {
+        // Match by bankId only
+        return transaction.bankId == account.bankId;
+      } else {
+        // Exact match (uniformMasking is null)
+        return txnAccount == account.accountNumber;
+      }
+    } catch (e) {
+      // Bank not found in database, fallback to bankId match
       return transaction.bankId == account.bankId;
     }
   }
@@ -189,27 +213,27 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       for (final account in bankAccounts) {
         bool matches = false;
 
-        if (account.bankId == 1 && account.accountNumber.length >= 4) {
-          matches = transaction.accountNumber!.length >= 4 &&
-              transaction.accountNumber!
-                      .substring(transaction.accountNumber!.length - 4) ==
-                  account.accountNumber
-                      .substring(account.accountNumber.length - 4);
-        } else if (account.bankId == 4 && account.accountNumber.length >= 3) {
-          matches = transaction.accountNumber!.length >= 3 &&
-              transaction.accountNumber!
-                      .substring(transaction.accountNumber!.length - 3) ==
-                  account.accountNumber
-                      .substring(account.accountNumber.length - 3);
-        } else if (account.bankId == 3 && account.accountNumber.length >= 2) {
-          matches = transaction.accountNumber!.length >= 2 &&
-              transaction.accountNumber!
-                      .substring(transaction.accountNumber!.length - 2) ==
-                  account.accountNumber
-                      .substring(account.accountNumber.length - 2);
-        } else if (account.bankId == 2 || account.bankId == 6) {
-          matches = true;
-        } else {
+        try {
+          final bank = _banks.firstWhere((b) => b.id == account.bankId);
+
+          if (bank.uniformMasking == true && bank.maskPattern != null) {
+            // Match last N digits based on mask pattern
+            if (transaction.accountNumber!.length >= bank.maskPattern! &&
+                account.accountNumber.length >= bank.maskPattern!) {
+              matches = transaction.accountNumber!.substring(
+                      transaction.accountNumber!.length - bank.maskPattern!) ==
+                  account.accountNumber.substring(
+                      account.accountNumber.length - bank.maskPattern!);
+            }
+          } else if (bank.uniformMasking == false) {
+            // Match by bankId only
+            matches = true;
+          } else {
+            // Exact match (uniformMasking is null)
+            matches = transaction.accountNumber == account.accountNumber;
+          }
+        } catch (e) {
+          // Bank not found in database, fallback to exact match
           matches = transaction.accountNumber == account.accountNumber;
         }
 
@@ -419,6 +443,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             return _getChartData(periodFiltered, offsetDate);
           });
         }
+
         final maxValue = chartData.isEmpty
             ? 5000.0
             : (chartData.map((e) => e.value).reduce((a, b) => a > b ? a : b) *

@@ -115,24 +115,35 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
       // Use helper logic similar to provider to match account
       List<Transaction> transactions = provider.allTransactions.where((t) {
         if (t.bankId != widget.bankId) return false;
-        // CBE check: last 4 digits
-        final bank = _banks.firstWhere((b) => b.id == widget.bankId);
-        if (bank.uniformMasking == true) {
-          return widget.accountNumber.endsWith(
-              t.accountNumber!.substring(t.accountNumber!.length - 4));
-        } else if (widget.bankId == 3 && widget.accountNumber.length >= 2) {
-          return widget.accountNumber.endsWith(
-              t.accountNumber!.substring(t.accountNumber!.length - 2));
-        } else if (widget.bankId == 4 && widget.accountNumber.length >= 3) {
-          return widget.accountNumber.endsWith(
-              t.accountNumber!.substring(t.accountNumber!.length - 3));
-        } else if (widget.bankId == 6) {
-          return t.bankId == 6;
-        } else if (widget.bankId == 2) {
-          return t.bankId == 2;
-        }
 
-        return t.accountNumber == widget.accountNumber;
+        // Get bank info with error handling
+        try {
+          final bank = _banks.firstWhere((b) => b.id == widget.bankId);
+
+          if (bank.uniformMasking == true && bank.maskPattern != null) {
+            // Match last N digits based on mask pattern
+            if (t.accountNumber == null || t.accountNumber!.isEmpty) {
+              return false;
+            }
+            if (widget.accountNumber.length < bank.maskPattern! ||
+                t.accountNumber!.length < bank.maskPattern!) {
+              return false;
+            }
+            return widget.accountNumber.substring(
+                    widget.accountNumber.length - bank.maskPattern!) ==
+                t.accountNumber!
+                    .substring(t.accountNumber!.length - bank.maskPattern!);
+          } else if (bank.uniformMasking == false) {
+            // Match by bankId only
+            return true;
+          } else {
+            // Exact match (uniformMasking is null)
+            return t.accountNumber == widget.accountNumber;
+          }
+        } catch (e) {
+          // Bank not found in database, fallback to exact match
+          return t.accountNumber == widget.accountNumber;
+        }
       }).toList();
 
       // 3. Filter by Date Range

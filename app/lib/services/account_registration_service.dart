@@ -282,59 +282,60 @@ class AccountRegistrationService {
     try {
       final accounts = await _accountRepo.getAccounts();
       int bankIdFromDetails = details['bankId'] ?? bankId;
+      final banks = await _bankConfigService.getBanks();
+      final bank = banks.firstWhere((b) => b.id == bankIdFromDetails);
 
-      // Use the same logic as SmsService for matching accounts
-      if (bankIdFromDetails == 6 || bankIdFromDetails == 2) {
-        // For bank 6 (Telebirr) and 2 (Awash), match by bank only
-        final index = accounts.indexWhere((a) => a.bank == bankIdFromDetails);
-        if (index != -1) {
-          final account = accounts[index];
-          final newBalance = details['currentBalance'] != null
-              ? SmsService.sanitizeAmount(details['currentBalance'])
-              : account.balance;
+      int index = -1;
 
-          final updated = Account(
-            accountNumber: account.accountNumber,
-            bank: account.bank,
-            balance: newBalance,
-            accountHolderName: account.accountHolderName,
-            settledBalance: account.settledBalance,
-            pendingCredit: account.pendingCredit,
-          );
-          await _accountRepo.saveAccount(updated);
-          print(
-              "debug: Account balance updated from latest message: $newBalance");
-        }
-      } else if (extractedAccountNumber != null) {
-        int index = -1;
-        final banks = await _bankConfigService.getBanks();
-        final bank = banks.firstWhere((b) => b.id == bankId);
-        if (bank.uniformMasking == true) {
+      // Use uniformMasking logic to match accounts
+      if (bank.uniformMasking == false) {
+        // Match by bankId only (e.g., Awash/Telebirr)
+        index = accounts.indexWhere((a) => a.bank == bankIdFromDetails);
+      } else if (extractedAccountNumber != null &&
+          extractedAccountNumber.isNotEmpty) {
+        if (bank.uniformMasking == true && bank.maskPattern != null) {
+          // Match last N digits based on mask pattern
+          final extractedSuffix = extractedAccountNumber.length >=
+                  bank.maskPattern!
+              ? extractedAccountNumber
+                  .substring(extractedAccountNumber.length - bank.maskPattern!)
+              : extractedAccountNumber;
+
           index = accounts.indexWhere((a) {
-            if (a.bank != bankId) return false;
-            return a.accountNumber.endsWith(extractedAccountNumber
-                .substring(extractedAccountNumber.length - bank.maskPattern!));
+            if (a.bank != bankIdFromDetails) return false;
+            if (a.accountNumber.length < bank.maskPattern!) return false;
+            final accountSuffix = a.accountNumber
+                .substring(a.accountNumber.length - bank.maskPattern!);
+            return accountSuffix == extractedSuffix;
           });
+        } else {
+          // Exact match (uniformMasking is null)
+          index = accounts.indexWhere((a) =>
+              a.bank == bankIdFromDetails &&
+              a.accountNumber == extractedAccountNumber);
         }
+      } else {
+        // No account number extracted, match by bankId only
+        index = accounts.indexWhere((a) => a.bank == bankIdFromDetails);
+      }
 
-        if (index != -1) {
-          final account = accounts[index];
-          final newBalance = details['currentBalance'] != null
-              ? SmsService.sanitizeAmount(details['currentBalance'])
-              : account.balance;
+      if (index != -1) {
+        final account = accounts[index];
+        final newBalance = details['currentBalance'] != null
+            ? SmsService.sanitizeAmount(details['currentBalance'])
+            : account.balance;
 
-          final updated = Account(
-            accountNumber: account.accountNumber,
-            bank: account.bank,
-            balance: newBalance,
-            accountHolderName: account.accountHolderName,
-            settledBalance: account.settledBalance,
-            pendingCredit: account.pendingCredit,
-          );
-          await _accountRepo.saveAccount(updated);
-          print(
-              "debug: Account balance updated from latest message for ${account.accountHolderName}: $newBalance");
-        }
+        final updated = Account(
+          accountNumber: account.accountNumber,
+          bank: account.bank,
+          balance: newBalance,
+          accountHolderName: account.accountHolderName,
+          settledBalance: account.settledBalance,
+          pendingCredit: account.pendingCredit,
+        );
+        await _accountRepo.saveAccount(updated);
+        print(
+            "debug: Account balance updated from latest message for ${account.accountHolderName}: $newBalance");
       }
     } catch (e) {
       print("debug: Error updating account balance from latest message: $e");

@@ -260,9 +260,11 @@ class TransactionRepository {
   Future<void> deleteTransactionsByAccount(
       String accountNumber, int bank) async {
     final db = await DatabaseHelper.instance.database;
+    final banks = await _bankConfigService.getBanks();
+    final currentBank = banks.firstWhere((b) => b.id == bank);
 
     // For banks that match by bankId only (Awash=2, Telebirr=6), delete all transactions for that bank
-    if (bank == 2 || bank == 6) {
+    if (currentBank.uniformMasking == false) {
       await db.delete(
         'transactions',
         where: 'bankId = ?',
@@ -273,8 +275,6 @@ class TransactionRepository {
 
     // For other banks, match by accountNumber substring logic
     String? accountSuffix;
-    final banks = await _bankConfigService.getBanks();
-    final currentBank = banks.firstWhere((b) => b.id == bank);
 
     if (currentBank.uniformMasking == true) {
       accountSuffix = accountNumber

@@ -208,8 +208,9 @@ class SmsService {
     // 4. Update Account Balance
     // We need to match the Bank ID from the pattern, not just assume 1 (CBE)
     int bankId = details['bankId'] ?? bank.id;
-
-    if (bankId == 6 || bankId == 2) {
+    final banks = await _bankConfigService.getBanks();
+    final currentBank = banks.firstWhere((b) => b.id == bankId);
+    if (currentBank.uniformMasking == false) {
       AccountRepository accRepo = AccountRepository();
       List<Account> accounts = await accRepo.getAccounts();
       int index = accounts.indexWhere((a) {

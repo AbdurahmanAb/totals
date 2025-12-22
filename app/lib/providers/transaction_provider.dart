@@ -160,32 +160,6 @@ class TransactionProvider with ChangeNotifier {
           accounts.fold(0.0, (sum, a) => sum + (a.pendingCredit ?? 0.0));
       double totalBalance = accounts.fold(0.0, (sum, a) => sum + a.balance);
 
-      // Log Telebirr (bankId 6) data
-      if (bankId == 6) {
-        var creditCount =
-            bankTransactions.where((t) => t.type == "CREDIT").length;
-        var debitCount =
-            bankTransactions.where((t) => t.type == "DEBIT").length;
-        var refs = bankTransactions.map((t) => t.reference).toList();
-        var uniqueRefs = refs.toSet();
-
-        print("debug: [TELEBIRR] Bank Summary:");
-        print(
-            "debug: [TELEBIRR]   Total Transactions count: ${bankTransactions.length}");
-        print("debug: [TELEBIRR]   Credit transactions: $creditCount");
-        print("debug: [TELEBIRR]   Debit transactions: $debitCount");
-        print("debug: [TELEBIRR]   Total Credit: $totalCredit");
-        print("debug: [TELEBIRR]   Total Debit: $totalDebit");
-        print("debug: [TELEBIRR]   Total Balance: $totalBalance");
-        print("debug: [TELEBIRR]   Account count: ${accounts.length}");
-        if (refs.length != uniqueRefs.length) {
-          print(
-              "debug: [TELEBIRR]   WARNING: Duplicate references in bank transactions!");
-          print(
-              "debug: [TELEBIRR]   Total refs: ${refs.length}, Unique refs: ${uniqueRefs.length}");
-        }
-      }
-
       return BankSummary(
         bankId: bankId,
         totalCredit: totalCredit,
@@ -267,25 +241,6 @@ class TransactionProvider with ChangeNotifier {
         _bankSummaries.fold(0.0, (sum, b) => sum + b.totalDebit);
     double grandTotalBalance =
         _bankSummaries.fold(0.0, (sum, b) => sum + b.totalBalance);
-
-    // Log Telebirr summary in grand totals
-    var telebirrSummary = _bankSummaries.firstWhere(
-      (b) => b.bankId == 6,
-      orElse: () => BankSummary(
-        bankId: 6,
-        totalCredit: 0.0,
-        totalDebit: 0.0,
-        settledBalance: 0.0,
-        pendingCredit: 0.0,
-        totalBalance: 0.0,
-        accountCount: 0,
-      ),
-    );
-    print("debug: [TELEBIRR] Final Summary:");
-    print("debug: [TELEBIRR]   Bank Credit: ${telebirrSummary.totalCredit}");
-    print("debug: [TELEBIRR]   Bank Debit: ${telebirrSummary.totalDebit}");
-    print("debug: [TELEBIRR]   Grand Total Credit: $grandTotalCredit");
-    print("debug: [TELEBIRR]   Grand Total Debit: $grandTotalDebit");
 
     _summary = AllSummary(
       totalCredit: grandTotalCredit,

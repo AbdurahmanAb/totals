@@ -741,39 +741,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                             ),
                             const SizedBox(width: 4),
                             // Debug menu button
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .surfaceVariant
-                                    .withOpacity(0.5),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: PopupMenuButton<String>(
-                                icon: Icon(Icons.bug_report_outlined,
-                                    color: Theme.of(context).iconTheme.color,
-                                    size: 22),
-                                padding: const EdgeInsets.all(8),
-                                constraints: const BoxConstraints(),
-                                onSelected: (value) {
-                                  if (value == 'failed_parse') {
-                                    _openFailedParsesPage();
-                                  }
-                                },
-                                itemBuilder: (context) => [
-                                  const PopupMenuItem(
-                                    value: 'failed_parse',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.error_outline, size: 20),
-                                        SizedBox(width: 8),
-                                        Text('Failed Parses'),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
                             const SizedBox(width: 4),
                             // Lock button
                             Container(
