@@ -539,8 +539,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                     },
                                   ),
                           ),
-                          const SizedBox(
-                              height: 100), // Padding for floating nav
                         ],
                       )
                     : tabId == HomeTabs.recentTabId
@@ -612,7 +610,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                   );
                                 },
                               ),
-                              const SizedBox(height: 100),
                             ],
                           )
                         : BankDetail(
@@ -636,13 +633,139 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       children: [
         Consumer<TransactionProvider>(
           builder: (context, provider, child) {
-            return _buildHomeContent(provider);
+            return Scaffold(
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              appBar: _buildHomeAppBar(),
+              body: _buildHomeContent(provider),
+            );
           },
         ),
         const AnalyticsPage(),
         const WebPage(),
         const SettingsPage(),
       ],
+    );
+  }
+
+  PreferredSizeWidget _buildHomeAppBar() {
+    return AppBar(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      toolbarHeight: 70,
+      scrolledUnderElevation: 0,
+      elevation: 0,
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              "assets/images/logo-text.png",
+              fit: BoxFit.contain,
+              width: 80,
+              height: 24,
+            ),
+          ),
+          Flexible(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Debug buttons grouped in a container
+                Flexible(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .surfaceVariant
+                          .withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        //         InkWell(
+                        //           onTap: () =>
+                        //               showDebugTransactionsDialog(context),
+                        //           borderRadius: BorderRadius.circular(8),
+                        //           child: Container(
+                        //             width: 40,
+                        //             height: 40,
+                        //             padding: const EdgeInsets.all(8),
+                        //             child: Icon(
+                        //               Icons.list_alt,
+                        //               color: Theme.of(context)
+                        //                   .iconTheme
+                        //                   .color,
+                        //               size: 20,
+                        //             ),
+                        //           ),
+                        //         ),
+                        //         InkWell(
+                        //           onTap: () => showDebugSmsDialog(context),
+                        //           borderRadius: BorderRadius.circular(8),
+                        //           child: Container(
+                        //             width: 40,
+                        //             height: 40,
+                        //             padding: const EdgeInsets.all(8),
+                        //             child: Icon(
+                        //               Icons.message_outlined,
+                        //               color: Theme.of(context)
+                        //                   .iconTheme
+                        //                   .color,
+                        //               size: 20,
+                        //             ),
+                        //           ),
+                        //         ),
+                        InkWell(
+                          onTap: _openFailedParsesPage,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Tooltip(
+                            message: 'View Failed Parsings',
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              padding: const EdgeInsets.all(8),
+                              child: Icon(
+                                Icons.error_outline,
+                                color: Theme.of(context).iconTheme.color,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                // Debug menu button
+                const SizedBox(width: 4),
+                // Lock button
+                Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .surfaceVariant
+                        .withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: IconButton(
+                    icon: Icon(Icons.lock_outline,
+                        color: Theme.of(context).iconTheme.color, size: 22),
+                    onPressed: () {
+                      setState(() {
+                        _isAuthenticated = false;
+                      });
+                    },
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -657,129 +780,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         return Scaffold(
           extendBody: true,
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          appBar: _bottomNavIndex == 0
-              ? AppBar(
-                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                  toolbarHeight: 70,
-                  scrolledUnderElevation: 0,
-                  elevation: 0,
-                  title: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.asset(
-                          "assets/images/logo-text.png",
-                          fit: BoxFit.contain,
-                          width: 80,
-                          height: 24,
-                        ),
-                      ),
-                      Flexible(
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // Debug buttons grouped in a container
-                            Flexible(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .surfaceVariant
-                                      .withOpacity(0.5),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    //         InkWell(
-                                    //           onTap: () =>
-                                    //               showDebugTransactionsDialog(context),
-                                    //           borderRadius: BorderRadius.circular(8),
-                                    //           child: Container(
-                                    //             width: 40,
-                                    //             height: 40,
-                                    //             padding: const EdgeInsets.all(8),
-                                    //             child: Icon(
-                                    //               Icons.list_alt,
-                                    //               color: Theme.of(context)
-                                    //                   .iconTheme
-                                    //                   .color,
-                                    //               size: 20,
-                                    //             ),
-                                    //           ),
-                                    //         ),
-                                    //         InkWell(
-                                    //           onTap: () => showDebugSmsDialog(context),
-                                    //           borderRadius: BorderRadius.circular(8),
-                                    //           child: Container(
-                                    //             width: 40,
-                                    //             height: 40,
-                                    //             padding: const EdgeInsets.all(8),
-                                    //             child: Icon(
-                                    //               Icons.message_outlined,
-                                    //               color: Theme.of(context)
-                                    //                   .iconTheme
-                                    //                   .color,
-                                    //               size: 20,
-                                    //             ),
-                                    //           ),
-                                    //         ),
-                                    InkWell(
-                                      onTap: _openFailedParsesPage,
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: Tooltip(
-                                        message: 'View Failed Parsings',
-                                        child: Container(
-                                          width: 40,
-                                          height: 40,
-                                          padding: const EdgeInsets.all(8),
-                                          child: Icon(
-                                            Icons.error_outline,
-                                            color: Theme.of(context)
-                                                .iconTheme
-                                                .color,
-                                            size: 20,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            // Debug menu button
-                            const SizedBox(width: 4),
-                            // Lock button
-                            Container(
-                              decoration: BoxDecoration(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .surfaceVariant
-                                    .withOpacity(0.5),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: IconButton(
-                                icon: Icon(Icons.lock_outline,
-                                    color: Theme.of(context).iconTheme.color,
-                                    size: 22),
-                                onPressed: () {
-                                  setState(() {
-                                    _isAuthenticated = false;
-                                  });
-                                },
-                                padding: const EdgeInsets.all(8),
-                                constraints: const BoxConstraints(),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ))
-              : null,
           body: _buildCurrentPage(),
           bottomNavigationBar: CustomBottomNavModern(
             currentIndex: _bottomNavIndex,

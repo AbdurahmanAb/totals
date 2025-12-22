@@ -107,7 +107,6 @@ class _BankDetailState extends State<BankDetail> {
               accountSummaries: widget.accountSummaries,
               visibleTotalBalancesForSubCards: visibleTotalBalancesForSubCards),
         ),
-        const SizedBox(height: 100), // Padding for floating nav
       ],
     );
   }

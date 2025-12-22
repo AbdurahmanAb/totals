@@ -62,7 +62,7 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
     return Consumer<AccountSyncStatusService>(
       builder: (context, syncStatusService, _) {
         return ListView.builder(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           itemCount: widget.accountSummaries.length,
           itemBuilder: (context, index) {
             final account = widget.accountSummaries[index];

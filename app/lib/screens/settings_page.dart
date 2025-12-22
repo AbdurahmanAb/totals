@@ -491,15 +491,20 @@ class _SettingsPageState extends State<SettingsPage>
   }
 
   Future<void> _navigateToManageProfiles() async {
-    final result = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const ProfileManagementPage(),
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Profile settings are coming soon.',
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+        ),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
       ),
     );
-    // Refresh if profile was changed
-    if (result == true && mounted) {
-      setState(() {});
-    }
   }
 
   void _showAboutDialog() {
