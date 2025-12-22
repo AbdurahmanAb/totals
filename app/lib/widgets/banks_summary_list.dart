@@ -118,7 +118,7 @@ class _BanksSummaryListState extends State<BanksSummaryList> {
     return Consumer<AccountSyncStatusService>(
       builder: (context, syncStatusService, child) {
         return GridView.builder(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             crossAxisSpacing: 12,
