@@ -28,7 +28,6 @@ import 'package:totals/widgets/today_transactions_list.dart';
 import 'package:totals/widgets/categorize_transaction_sheet.dart';
 import 'package:totals/widgets/category_filter_button.dart';
 import 'package:totals/widgets/category_filter_sheet.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -50,6 +49,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   bool _hasCheckedInternet = false;
   bool _hasCheckedNotificationPermissions = false;
   bool _hasInitializedPermissions = false;
+  bool _hasInitializedSmsPermissions = false;
 
   // UI State
   bool showTotalBalance = false;
@@ -126,8 +126,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       }
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _authenticateIfAvailable();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _initSmsPermissions();
+      if (mounted) {
+        _authenticateIfAvailable();
+      }
     });
   }
 
@@ -270,6 +273,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       return;
     }
 
+    await _initSmsPermissions();
     await _authenticateIfAvailable();
   }
 
@@ -371,6 +375,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _initSmsPermissions() async {
+    if (_hasInitializedSmsPermissions) return;
+    _hasInitializedSmsPermissions = true;
+    try {
+      await _smsService.init();
+    } catch (e) {
+      if (kDebugMode) {
+        print('debug: SMS permission init failed: $e');
+      }
+    }
+  }
+
   Future<void> _checkInternetRequirement() async {
     final configService = SmsConfigService();
     final bankConfigService = BankConfigService();
@@ -387,22 +403,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   Future<void> _initPermissions() async {
     try {
-      // Check SMS permission status first
-      final smsPermissionStatus = await Permission.sms.status;
-      final smsAlreadyGranted = smsPermissionStatus.isGranted;
-
-      // Initialize SMS service (this may show a permission dialog)
-      await _smsService.init();
-
-      // If SMS permission was already granted, we can check notification permissions immediately
-      // Otherwise, wait briefly to allow the SMS permission dialog to be shown and dismissed
-      final delay = smsAlreadyGranted
-          ? const Duration(
-              milliseconds: 1) // Minimal delay if no SMS dialog will show
-          : const Duration(
-              milliseconds: 1); // Brief delay if SMS dialog was shown
-
-      await Future.delayed(delay);
+      if (!_hasInitializedSmsPermissions) {
+        _hasInitializedSmsPermissions = true;
+        await _smsService.init();
+      }
 
       if (mounted && !_hasCheckedNotificationPermissions) {
         await _checkNotificationPermissions();
