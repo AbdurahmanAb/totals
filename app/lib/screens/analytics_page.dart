@@ -19,7 +19,6 @@ import 'package:totals/widgets/analytics/chart_data_utils.dart';
 import 'package:totals/widgets/categorize_transaction_sheet.dart';
 import 'package:totals/widgets/category_filter_button.dart';
 import 'package:totals/widgets/category_filter_sheet.dart';
-import 'package:totals/utils/category_icons.dart';
 
 class AnalyticsPage extends StatefulWidget {
   const AnalyticsPage({super.key});

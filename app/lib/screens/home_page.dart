@@ -58,7 +58,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   StreamSubscription<NotificationIntent>? _notificationIntentSub;
   String? _pendingNotificationReference;
   String? _highlightedReference;
-  Set<int?> _selectedTodayCategoryIds = {};
+  Set<int?> _selectedTodayIncomeCategoryIds = {};
+  Set<int?> _selectedTodayExpenseCategoryIds = {};
 
   @override
   void initState() {
@@ -487,11 +488,26 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }).toList(growable: false);
   }
 
+  bool _matchesCategorySelection(int? categoryId, Set<int?> selection) {
+    if (selection.isEmpty) return true;
+    if (categoryId == null) return selection.contains(null);
+    return selection.contains(categoryId);
+  }
+
   bool _matchesCategoryFilter(Transaction transaction) {
-    if (_selectedTodayCategoryIds.isEmpty) return true;
-    final categoryId = transaction.categoryId;
-    if (categoryId == null) return _selectedTodayCategoryIds.contains(null);
-    return _selectedTodayCategoryIds.contains(categoryId);
+    if (_selectedTodayIncomeCategoryIds.isEmpty &&
+        _selectedTodayExpenseCategoryIds.isEmpty) {
+      return true;
+    }
+    if (transaction.type == 'CREDIT') {
+      return _matchesCategorySelection(
+          transaction.categoryId, _selectedTodayIncomeCategoryIds);
+    }
+    if (transaction.type == 'DEBIT') {
+      return _matchesCategorySelection(
+          transaction.categoryId, _selectedTodayExpenseCategoryIds);
+    }
+    return true;
   }
 
   List<Transaction> _filterByCategory(List<Transaction> transactions) {
@@ -499,16 +515,24 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Future<void> _openTodayCategoryFilterSheet(
-    TransactionProvider provider,
-  ) async {
+    TransactionProvider provider, {
+    required String flow,
+  }) async {
     final result = await showCategoryFilterSheet(
       context: context,
       provider: provider,
-      selectedCategoryIds: _selectedTodayCategoryIds,
+      selectedCategoryIds: flow == 'income'
+          ? _selectedTodayIncomeCategoryIds
+          : _selectedTodayExpenseCategoryIds,
+      flow: flow,
     );
     if (result == null) return;
     setState(() {
-      _selectedTodayCategoryIds = result.toSet();
+      if (flow == 'income') {
+        _selectedTodayIncomeCategoryIds = result.toSet();
+      } else {
+        _selectedTodayExpenseCategoryIds = result.toSet();
+      }
     });
   }
 
@@ -700,14 +724,39 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                             ],
                                           ),
                                         ),
-                                        CategoryFilterButton(
-                                          label: 'Categories',
-                                          selectedCount:
-                                              _selectedTodayCategoryIds.length,
-                                          onTap: () =>
-                                              _openTodayCategoryFilterSheet(
-                                            provider,
-                                          ),
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            CategoryFilterIconButton(
+                                              icon: Icons.category_rounded,
+                                              iconColor: Colors.green,
+                                              selectedCount:
+                                                  _selectedTodayIncomeCategoryIds
+                                                      .length,
+                                              tooltip: 'Income categories',
+                                              onTap: () =>
+                                                  _openTodayCategoryFilterSheet(
+                                                provider,
+                                                flow: 'income',
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            CategoryFilterIconButton(
+                                              icon: Icons.category_rounded,
+                                              iconColor: Theme.of(context)
+                                                  .colorScheme
+                                                  .error,
+                                              selectedCount:
+                                                  _selectedTodayExpenseCategoryIds
+                                                      .length,
+                                              tooltip: 'Expense categories',
+                                              onTap: () =>
+                                                  _openTodayCategoryFilterSheet(
+                                                provider,
+                                                flow: 'expense',
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),

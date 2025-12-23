@@ -27,7 +27,8 @@ class TransactionsForPeriodPage extends StatefulWidget {
 
 class _TransactionsForPeriodPageState extends State<TransactionsForPeriodPage> {
   String _sortBy = 'Date';
-  Set<int?> _selectedCategoryIds = {};
+  Set<int?> _selectedIncomeCategoryIds = {};
+  Set<int?> _selectedExpenseCategoryIds = {};
 
   Transaction? _findUpdatedTransaction(
     Transaction original,
@@ -52,26 +53,48 @@ class _TransactionsForPeriodPageState extends State<TransactionsForPeriodPage> {
         .toList();
   }
 
+  bool _matchesCategorySelection(int? categoryId, Set<int?> selection) {
+    if (selection.isEmpty) return true;
+    if (categoryId == null) return selection.contains(null);
+    return selection.contains(categoryId);
+  }
+
   bool _matchesCategoryFilter(Transaction transaction) {
-    if (_selectedCategoryIds.isEmpty) return true;
-    final categoryId = transaction.categoryId;
-    if (categoryId == null) return _selectedCategoryIds.contains(null);
-    return _selectedCategoryIds.contains(categoryId);
+    if (_selectedIncomeCategoryIds.isEmpty &&
+        _selectedExpenseCategoryIds.isEmpty) {
+      return true;
+    }
+    if (transaction.type == 'CREDIT') {
+      return _matchesCategorySelection(
+          transaction.categoryId, _selectedIncomeCategoryIds);
+    }
+    if (transaction.type == 'DEBIT') {
+      return _matchesCategorySelection(
+          transaction.categoryId, _selectedExpenseCategoryIds);
+    }
+    return true;
   }
 
   List<Transaction> _filterByCategory(List<Transaction> transactions) {
     return transactions.where(_matchesCategoryFilter).toList(growable: false);
   }
 
-  Future<void> _openCategoryFilterSheet() async {
+  Future<void> _openCategoryFilterSheet({required String flow}) async {
     final result = await showCategoryFilterSheet(
       context: context,
       provider: widget.provider,
-      selectedCategoryIds: _selectedCategoryIds,
+      selectedCategoryIds: flow == 'income'
+          ? _selectedIncomeCategoryIds
+          : _selectedExpenseCategoryIds,
+      flow: flow,
     );
     if (result == null) return;
     setState(() {
-      _selectedCategoryIds = result.toSet();
+      if (flow == 'income') {
+        _selectedIncomeCategoryIds = result.toSet();
+      } else {
+        _selectedExpenseCategoryIds = result.toSet();
+      }
     });
   }
 
@@ -112,10 +135,29 @@ class _TransactionsForPeriodPageState extends State<TransactionsForPeriodPage> {
                   children: [
                     Align(
                       alignment: Alignment.centerRight,
-                      child: CategoryFilterButton(
-                        label: 'Categories',
-                        selectedCount: _selectedCategoryIds.length,
-                        onTap: _openCategoryFilterSheet,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CategoryFilterIconButton(
+                            icon: Icons.category_rounded,
+                            iconColor: Colors.green,
+                            selectedCount:
+                                _selectedIncomeCategoryIds.length,
+                            tooltip: 'Income categories',
+                            onTap: () =>
+                                _openCategoryFilterSheet(flow: 'income'),
+                          ),
+                          const SizedBox(width: 8),
+                          CategoryFilterIconButton(
+                            icon: Icons.category_rounded,
+                            iconColor: Theme.of(context).colorScheme.error,
+                            selectedCount:
+                                _selectedExpenseCategoryIds.length,
+                            tooltip: 'Expense categories',
+                            onTap: () =>
+                                _openCategoryFilterSheet(flow: 'expense'),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 12),
