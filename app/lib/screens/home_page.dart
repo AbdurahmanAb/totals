@@ -624,7 +624,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                               });
                             },
                           ),
-                          const SizedBox(height: 12),
+                          // const SizedBox(height: 12),
                           Expanded(
                             child: provider.accountSummaries.isEmpty
                                 ? DetectedBanksWidget(
