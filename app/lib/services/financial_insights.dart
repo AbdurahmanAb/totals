@@ -4,6 +4,7 @@ import 'package:totals/models/category.dart';
 
 import '../models/transaction.dart';
 import '../utils/math_utils.dart';
+import '../utils/pattern_keys.dart';
 
 class InsightsService {
   static const int _scoreVersion = 2; // v1 = no categories, v2 = category aware.
@@ -65,11 +66,11 @@ class InsightsService {
     final patterns = _spendingPatterns(transactions);
     // we add these to the summary map so that the UI
     // can use them later.
-    patterns["essentialsRatio"] = essentialsRatio;
-    patterns["categorizedCoverage"] = categorizedCoverage;
-    patterns["essentialSpend"] = categoryBreakdown.essential;
-    patterns["nonEssentialSpend"] = categoryBreakdown.nonEssential;
-    patterns["uncategorizedSpend"] = categoryBreakdown.uncategorized;
+    patterns[PatternKeys.essentialsRatio] = essentialsRatio;
+    patterns[PatternKeys.categorizedCoverage] = categorizedCoverage;
+    patterns[PatternKeys.essentialSpend] = categoryBreakdown.essential;
+    patterns[PatternKeys.nonEssentialSpend] = categoryBreakdown.nonEssential;
+    patterns[PatternKeys.uncategorizedSpend] = categoryBreakdown.uncategorized;
 
     final recurring = _recurring(expenses);
     final anomalies = _anomalies(expenses);
@@ -80,10 +81,10 @@ class InsightsService {
       income: totalIncome,
       expense: totalExpense,
       savingsRate: _savingsRate(totalIncome, totalExpense),
-      variance: patterns["spendVariance"].toDouble(),
-      stabilityIndex: patterns["stablityIndex"].toDouble(),
-      essentialsRatio: patterns["essentialsRatio"].toDouble(),
-      categorizedCoverage: patterns["categorizedCoverage"].toDouble(),
+      variance: (patterns[PatternKeys.spendVariance] ?? 0.0).toDouble(),
+      stabilityIndex: (patterns[PatternKeys.stabilityIndex] ?? 0.0).toDouble(),
+      essentialsRatio: (patterns[PatternKeys.essentialsRatio] ?? 0.0).toDouble(),
+      categorizedCoverage: (patterns[PatternKeys.categorizedCoverage] ?? 0.0).toDouble(),
       // essentialsRatio removed from health score calculation
       // Will be improved in the future when better categorization is available
     );
@@ -91,9 +92,9 @@ class InsightsService {
     final budget = _budgetSuggestions(
       totalIncome: totalIncome,
       totalExpense: totalExpense,
-      categoryTotals: patterns['byCategory'] as Map<String, double>,
-      essentialsSpend: patterns['essentialSpend'] as double,
-      nonEssentialsSpend: patterns['nonEssentialSpend'] as double,
+      categoryTotals: patterns[PatternKeys.byCategory] as Map<String, double>,
+      essentialsSpend: patterns[PatternKeys.essentialSpend] as double,
+      nonEssentialsSpend: patterns[PatternKeys.nonEssentialSpend] as double,
     );
 
     _cache = {

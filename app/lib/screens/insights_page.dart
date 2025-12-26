@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:totals/data/consts.dart';
 import 'package:totals/models/transaction.dart';
 import 'package:totals/providers/transaction_provider.dart';
+import '../utils/pattern_keys.dart';
 import 'package:totals/services/financial_insights.dart';
 import 'package:totals/widgets/insights/insights_explainer_bottomsheet.dart';
 import 'package:totals/screens/transactions_for_period_page.dart';
@@ -20,13 +21,14 @@ class InsightsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final txProvider = Provider.of<TransactionProvider>(context, listen: false);
-    final insightsService = InsightsService(
-      () => transactions,
-      getCategoryById: txProvider.getCategoryById,
-    );
+    try {
+      final txProvider = Provider.of<TransactionProvider>(context, listen: false);
+      final insightsService = InsightsService(
+        () => transactions,
+        getCategoryById: txProvider.getCategoryById,
+      );
 
-    final insights = insightsService.summarize();
+      final insights = insightsService.summarize();
 
     final score = insights['score']['value'] as int;
     final projections = insights['projections'] as Map<String, dynamic>;
@@ -41,7 +43,7 @@ class InsightsPage extends StatelessWidget {
     final formatter = NumberFormat.currency(symbol: 'ETB ', decimalDigits: 2);
 
     final double categorizedCoverage =
-        _toDouble(patterns['categorizedCoverage']);
+        _toDouble(patterns[PatternKeys.categorizedCoverage]);
     final bool lowCoverage = categorizedCoverage < 0.7;
 
     return Scaffold(
@@ -174,7 +176,7 @@ class InsightsPage extends StatelessWidget {
                 const SizedBox(height: 12),
                 _buildStabilityCard(
                   context,
-                  _toDouble(patterns['spendVariance']),
+                  _toDouble(patterns[PatternKeys.spendVariance]),
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -301,7 +303,7 @@ class InsightsPage extends StatelessWidget {
                     'Spending Patterns',
                     Icons.insights,
                     [
-                      ...(patterns['byCategory'] as Map<String, dynamic>)
+                      ...(patterns[PatternKeys.byCategory] as Map<String, dynamic>)
                           .entries
                           .map(
                         (entry) {
@@ -329,7 +331,7 @@ class InsightsPage extends StatelessWidget {
                         context,
                         'Spending Variance',
                         _formatLargeNumber(
-                            _toDouble(patterns['stabilityIndex'])),
+                            _toDouble(patterns[PatternKeys.stabilityIndex])),
                       ),
                       // Removed Essentials Share - will be improved in the future
                       // when better categorization is available
@@ -351,6 +353,52 @@ class InsightsPage extends StatelessWidget {
         ),
       ),
     );
+    } catch (e, stackTrace) {
+      // Log error for debugging
+      print('[INSIGHTS_PAGE_ERROR] Error building insights page: $e');
+      print('[INSIGHTS_PAGE_ERROR] Stack trace: $stackTrace');
+      
+      // Show error UI instead of grey screen
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Financial Insights'),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Error loading insights',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Error: $e',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    // Try to rebuild
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Go Back'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   String _bankLabel(int? bankId) {
@@ -736,10 +784,18 @@ class InsightsPage extends StatelessWidget {
     List<Transaction> transactions,
     TransactionProvider provider,
   ) {
-    final coveragePercent = (categorizedCoverage * 100).toStringAsFixed(0);
-    final uncategorizedCount = transactions
-        .where((t) => !_isIncome(t) && t.categoryId == null)
-        .length;
+    try {
+      final coveragePercent = (categorizedCoverage * 100).toStringAsFixed(0);
+      final uncategorizedCount = transactions
+          .where((t) {
+            try {
+              return !_isIncome(t) && t.categoryId == null;
+            } catch (e) {
+              print('[INSIGHTS_PAGE_ERROR] Error in _isIncome check: $e');
+              return false;
+            }
+          })
+          .length;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -808,27 +864,42 @@ class InsightsPage extends StatelessWidget {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    // Navigate to transactions page filtered to uncategorized
-                    final uncategorizedTransactions = transactions
-                        .where((t) => !_isIncome(t) && t.categoryId == null)
-                        .toList();
-                    
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => TransactionsForPeriodPage(
-                          transactions: uncategorizedTransactions.isEmpty
-                              ? transactions
-                              : uncategorizedTransactions,
-                          provider: provider,
-                          title: uncategorizedTransactions.isEmpty
-                              ? 'All Transactions'
-                              : 'Uncategorized Transactions',
-                          subtitle: uncategorizedTransactions.isEmpty
-                              ? null
-                              : '$uncategorizedCount transactions need categorization',
+                    try {
+                      // Navigate to transactions page filtered to uncategorized
+                      final uncategorizedTransactions = transactions
+                          .where((t) {
+                            try {
+                              return !_isIncome(t) && t.categoryId == null;
+                            } catch (e) {
+                              print('[INSIGHTS_PAGE_ERROR] Error filtering transactions: $e');
+                              return false;
+                            }
+                          })
+                          .toList();
+                      
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => TransactionsForPeriodPage(
+                            transactions: uncategorizedTransactions.isEmpty
+                                ? transactions
+                                : uncategorizedTransactions,
+                            provider: provider,
+                            title: uncategorizedTransactions.isEmpty
+                                ? 'All Transactions'
+                                : 'Uncategorized Transactions',
+                            subtitle: uncategorizedTransactions.isEmpty
+                                ? null
+                                : '$uncategorizedCount transactions need categorization',
+                          ),
                         ),
-                      ),
-                    );
+                      );
+                    } catch (e, stackTrace) {
+                      print('[INSIGHTS_PAGE_ERROR] Error navigating to transactions: $e');
+                      print('[INSIGHTS_PAGE_ERROR] Stack trace: $stackTrace');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: $e')),
+                      );
+                    }
                   },
                   icon: Icon(
                     Icons.edit_outlined,
@@ -864,13 +935,24 @@ class InsightsPage extends StatelessWidget {
         ],
       ),
     );
+    } catch (e, stackTrace) {
+      print('[INSIGHTS_PAGE_ERROR] Error in _buildCategorizationBanner: $e');
+      print('[INSIGHTS_PAGE_ERROR] Stack trace: $stackTrace');
+      // Return empty container on error to prevent grey screen
+      return const SizedBox.shrink();
+    }
   }
 
   bool _isIncome(Transaction t) {
-    final type = t.type?.toUpperCase() ?? '';
-    if (type.contains("CREDIT")) return true;
-    if (type.contains("DEBIT")) return false;
-    return t.amount >= 0;
+    try {
+      final type = t.type?.toUpperCase() ?? '';
+      if (type.contains("CREDIT")) return true;
+      if (type.contains("DEBIT")) return false;
+      return t.amount >= 0;
+    } catch (e) {
+      print('[INSIGHTS_PAGE_ERROR] Error in _isIncome: $e, transaction: ${t.reference}');
+      return false;
+    }
   }
 }
 
