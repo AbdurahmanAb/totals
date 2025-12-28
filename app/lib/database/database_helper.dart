@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     final db = await openDatabase(
       path,
-      version: 13,
+      version: 14,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -144,6 +144,24 @@ class DatabaseHelper {
         updatedAt TEXT
       )
     ''');
+
+    // Receiver category mappings table
+    await db.execute('''
+      CREATE TABLE receiver_category_mappings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        accountNumber TEXT NOT NULL,
+        categoryId INTEGER NOT NULL,
+        accountType TEXT NOT NULL,
+        createdAt TEXT NOT NULL,
+        UNIQUE(accountNumber, accountType)
+      )
+    ''');
+    await db.execute(
+      "CREATE INDEX idx_receiver_mappings_accountNumber ON receiver_category_mappings(accountNumber)",
+    );
+    await db.execute(
+      "CREATE INDEX idx_receiver_mappings_categoryId ON receiver_category_mappings(categoryId)",
+    );
 
     // Create indexes for better query performance
     await db.execute(
@@ -413,6 +431,31 @@ class DatabaseHelper {
         print("debug: Added colors column to banks table");
       } catch (e) {
         print("debug: Error adding colors column (might already exist): $e");
+      }
+    }
+
+    if (oldVersion < 14) {
+      // Add receiver category mappings table for version 14
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS receiver_category_mappings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            accountNumber TEXT NOT NULL,
+            categoryId INTEGER NOT NULL,
+            accountType TEXT NOT NULL,
+            createdAt TEXT NOT NULL,
+            UNIQUE(accountNumber, accountType)
+          )
+        ''');
+        await db.execute(
+          "CREATE INDEX IF NOT EXISTS idx_receiver_mappings_accountNumber ON receiver_category_mappings(accountNumber)",
+        );
+        await db.execute(
+          "CREATE INDEX IF NOT EXISTS idx_receiver_mappings_categoryId ON receiver_category_mappings(categoryId)",
+        );
+        print("debug: Added receiver_category_mappings table");
+      } catch (e) {
+        print("debug: Error adding receiver_category_mappings table (might already exist): $e");
       }
     }
   }
