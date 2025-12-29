@@ -3,6 +3,8 @@ import 'package:totals/database/database_helper.dart';
 import 'package:totals/models/transaction.dart';
 import 'package:totals/repositories/profile_repository.dart';
 import 'package:totals/services/bank_config_service.dart';
+import 'package:totals/services/receiver_category_service.dart';
+import 'package:totals/services/notification_settings_service.dart';
 
 class TransactionRepository {
   final BankConfigService _bankConfigService = BankConfigService();
@@ -44,18 +46,42 @@ class TransactionRepository {
     }).toList();
   }
 
-  Future<void> saveTransaction(Transaction transaction) async {
+  Future<void> saveTransaction(
+    Transaction transaction, {
+    bool skipAutoCategorization = false,
+  }) async {
     final db = await DatabaseHelper.instance.database;
     final activeProfileId = await _getActiveProfileId();
     
     // Use transaction's profileId if provided, otherwise use active profile
     final profileId = transaction.profileId ?? activeProfileId;
 
+    // Apply auto-categorization if enabled and transaction has no category
+    // Skip if explicitly requested (e.g., when user clears category)
+    Transaction transactionToSave = transaction;
+    if (!skipAutoCategorization && transaction.categoryId == null) {
+      final isEnabled = await NotificationSettingsService.instance
+          .isAutoCategorizeByReceiverEnabled();
+      if (isEnabled) {
+        final categoryId = await ReceiverCategoryService.instance
+            .getCategoryForTransaction(
+          receiver: transaction.receiver,
+          creditor: transaction.creditor,
+        );
+        if (categoryId != null) {
+          transactionToSave = transaction.copyWith(categoryId: categoryId);
+          print("debug: Auto-categorized transaction ${transaction.reference} with categoryId $categoryId");
+        }
+      }
+    } else if (skipAutoCategorization) {
+      print("debug: Skipping auto-categorization for transaction ${transaction.reference}, categoryId: ${transaction.categoryId}");
+    }
+
     // Parse and extract date components for faster queries
     int? year, month, day, week;
-    if (transaction.time != null) {
+    if (transactionToSave.time != null) {
       try {
-        final date = DateTime.parse(transaction.time!);
+        final date = DateTime.parse(transactionToSave.time!);
         year = date.year;
         month = date.month;
         day = date.day;
@@ -65,29 +91,37 @@ class TransactionRepository {
       }
     }
 
+    final dataToSave = {
+      'amount': transactionToSave.amount,
+      'reference': transactionToSave.reference,
+      'creditor': transactionToSave.creditor,
+      'receiver': transactionToSave.receiver,
+      'time': transactionToSave.time,
+      'status': transactionToSave.status,
+      'currentBalance': transactionToSave.currentBalance,
+      'bankId': transactionToSave.bankId,
+      'type': transactionToSave.type,
+      'transactionLink': transactionToSave.transactionLink,
+      'accountNumber': transactionToSave.accountNumber,
+      'categoryId': transactionToSave.categoryId,
+      'year': year,
+      'month': month,
+      'day': day,
+      'week': week,
+    };
+    
+    print("debug: Saving transaction ${transactionToSave.reference} with categoryId: ${dataToSave['categoryId']}");
+    
+    // Add profileId to dataToSave
+    dataToSave['profileId'] = profileId;
+    
     await db.insert(
       'transactions',
-      {
-        'amount': transaction.amount,
-        'reference': transaction.reference,
-        'creditor': transaction.creditor,
-        'receiver': transaction.receiver,
-        'time': transaction.time,
-        'status': transaction.status,
-        'currentBalance': transaction.currentBalance,
-        'bankId': transaction.bankId,
-        'type': transaction.type,
-        'transactionLink': transaction.transactionLink,
-        'accountNumber': transaction.accountNumber,
-        'categoryId': transaction.categoryId,
-        'profileId': profileId,
-        'year': year,
-        'month': month,
-        'day': day,
-        'week': week,
-      },
+      dataToSave,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+    
+    print("debug: Transaction ${transactionToSave.reference} saved successfully");
   }
 
   Future<void> saveAllTransactions(List<Transaction> transactions) async {

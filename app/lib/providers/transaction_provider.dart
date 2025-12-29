@@ -7,6 +7,8 @@ import 'package:totals/repositories/account_repository.dart';
 import 'package:totals/repositories/category_repository.dart';
 import 'package:totals/repositories/transaction_repository.dart';
 import 'package:totals/services/bank_config_service.dart';
+import 'package:totals/services/receiver_category_service.dart';
+import 'package:totals/services/notification_settings_service.dart';
 
 class TransactionProvider with ChangeNotifier {
   final TransactionRepository _transactionRepo = TransactionRepository();
@@ -323,12 +325,37 @@ class TransactionProvider with ChangeNotifier {
     await _transactionRepo.saveTransaction(
       transaction.copyWith(categoryId: category.id),
     );
+
+    // Save mapping if auto-categorization is enabled
+    final isEnabled = await NotificationSettingsService.instance
+        .isAutoCategorizeByReceiverEnabled();
+    if (isEnabled && category.id != null) {
+      // Save receiver mapping if receiver exists
+      if (transaction.receiver != null && transaction.receiver!.isNotEmpty) {
+        await ReceiverCategoryService.instance.saveMapping(
+          transaction.receiver!,
+          category.id!,
+          'receiver',
+        );
+      }
+      // Save creditor mapping if creditor exists
+      if (transaction.creditor != null && transaction.creditor!.isNotEmpty) {
+        await ReceiverCategoryService.instance.saveMapping(
+          transaction.creditor!,
+          category.id!,
+          'creditor',
+        );
+      }
+    }
+
     await loadData();
   }
 
   Future<void> clearCategoryForTransaction(Transaction transaction) async {
+    // Use copyWith with clearCategoryId flag to explicitly set categoryId to null
     await _transactionRepo.saveTransaction(
-      transaction.copyWith(categoryId: null),
+      transaction.copyWith(clearCategoryId: true),
+      skipAutoCategorization: true,
     );
     await loadData();
   }
@@ -368,5 +395,47 @@ class TransactionProvider with ChangeNotifier {
   Future<void> deleteCategory(Category category) async {
     await _categoryRepo.deleteCategory(category);
     await loadData();
+  }
+
+  /// Apply auto-categorization to existing uncategorized transactions
+  /// This is called when the feature is enabled
+  Future<int> applyAutoCategorizationToExisting() async {
+    final isEnabled = await NotificationSettingsService.instance
+        .isAutoCategorizeByReceiverEnabled();
+    if (!isEnabled) return 0;
+
+    // Get all uncategorized transactions
+    final uncategorizedTransactions = _allTransactions
+        .where((t) => t.categoryId == null)
+        .where((t) =>
+            (t.receiver != null && t.receiver!.isNotEmpty) ||
+            (t.creditor != null && t.creditor!.isNotEmpty))
+        .toList();
+
+    int updatedCount = 0;
+    final batch = <Transaction>[];
+
+    for (final transaction in uncategorizedTransactions) {
+      final categoryId = await ReceiverCategoryService.instance
+          .getCategoryForTransaction(
+        receiver: transaction.receiver,
+        creditor: transaction.creditor,
+      );
+
+      if (categoryId != null) {
+        batch.add(transaction.copyWith(categoryId: categoryId));
+        updatedCount++;
+      }
+    }
+
+    // Save all updated transactions
+    if (batch.isNotEmpty) {
+      for (final transaction in batch) {
+        await _transactionRepo.saveTransaction(transaction);
+      }
+      await loadData();
+    }
+
+    return updatedCount;
   }
 }

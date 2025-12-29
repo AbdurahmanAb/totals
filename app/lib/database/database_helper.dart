@@ -146,6 +146,24 @@ class DatabaseHelper {
       )
     ''');
 
+    // Receiver category mappings table
+    await db.execute('''
+      CREATE TABLE receiver_category_mappings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        accountNumber TEXT NOT NULL,
+        categoryId INTEGER NOT NULL,
+        accountType TEXT NOT NULL,
+        createdAt TEXT NOT NULL,
+        UNIQUE(accountNumber, accountType)
+      )
+    ''');
+    await db.execute(
+      "CREATE INDEX idx_receiver_mappings_accountNumber ON receiver_category_mappings(accountNumber)",
+    );
+    await db.execute(
+      "CREATE INDEX idx_receiver_mappings_categoryId ON receiver_category_mappings(categoryId)",
+    );
+
     // Create indexes for better query performance
     await db.execute(
         'CREATE INDEX idx_transactions_reference ON transactions(reference)');

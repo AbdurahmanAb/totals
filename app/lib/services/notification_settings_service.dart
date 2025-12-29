@@ -12,6 +12,7 @@ class NotificationSettingsService {
   static const _kDailyHour = 'notifications_daily_hour';
   static const _kDailyMinute = 'notifications_daily_minute';
   static const _kDailyLastSentEpochMs = 'notifications_daily_last_sent_epoch_ms';
+  static const _kAutoCategorizeReceiverEnabled = 'auto_categorize_receiver_enabled';
 
   Future<bool> isTransactionNotificationsEnabled() async {
     final prefs = await SharedPreferences.getInstance();
@@ -61,5 +62,15 @@ class NotificationSettingsService {
   Future<void> clearDailySummaryLastSentAt() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kDailyLastSentEpochMs);
+  }
+
+  Future<bool> isAutoCategorizeByReceiverEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_kAutoCategorizeReceiverEnabled) ?? false;
+  }
+
+  Future<void> setAutoCategorizeByReceiverEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kAutoCategorizeReceiverEnabled, enabled);
   }
 }

@@ -83,6 +83,7 @@ class Transaction {
     String? accountNumber,
     int? categoryId,
     int? profileId,
+    bool clearCategoryId = false, // Flag to explicitly clear categoryId
   }) {
     return Transaction(
       amount: amount ?? this.amount,
@@ -96,7 +97,9 @@ class Transaction {
       type: type ?? this.type,
       transactionLink: transactionLink ?? this.transactionLink,
       accountNumber: accountNumber ?? this.accountNumber,
-      categoryId: categoryId ?? this.categoryId,
+      categoryId: clearCategoryId 
+          ? null 
+          : (categoryId ?? this.categoryId),
       profileId: profileId ?? this.profileId,
     );
   }
