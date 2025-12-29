@@ -57,64 +57,91 @@ class CustomBottomNavModern extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List.generate(tabs.length, (index) {
-                    final isActive = currentIndex == index;
-                    final tab = tabs[index];
-                    final isHome = index == homeIndex;
-
-                    if (isHome) {
-                      // Special centered home button - larger and elevated
-                      return GestureDetector(
-                        onTap: () => onTap(index),
-                        behavior: HitTestBehavior.opaque,
-                        child: Container(
-                          width: 64,
-                          height: 64,
-                          margin: const EdgeInsets.only(bottom: 8),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isActive
-                                ? primaryColor
-                                : Theme.of(context).colorScheme.surfaceVariant,
-                            boxShadow: [
-                              BoxShadow(
-                                color: isActive
-                                    ? primaryColor.withOpacity(0.4)
-                                    : Colors.black.withOpacity(0.2),
-                                blurRadius: 15,
-                                offset: const Offset(0, 4),
-                                spreadRadius: 2,
+                  children: [
+                    // Left side: Analytics and Budget
+                    Expanded(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          for (int index = 0; index < homeIndex; index++)
+                            Flexible(
+                              flex: currentIndex == index ? 2 : 1,
+                              child: GestureDetector(
+                                onTap: () => onTap(index),
+                                behavior: HitTestBehavior.opaque,
+                                child: _BottomNavItem(
+                                  isActive: currentIndex == index,
+                                  primaryColor: primaryColor,
+                                  iconColor: iconColor,
+                                  icon: tabs[index]['icon'] as IconData,
+                                  filledIcon: tabs[index]['filledIcon'] as IconData,
+                                  label: tabs[index]['label'] as String,
+                                ),
                               ),
-                            ],
-                          ),
-                          child: Icon(
-                            isActive ? tab['filledIcon'] as IconData : tab['icon'] as IconData,
-                            size: 28,
-                            color: isActive
-                                ? Colors.white
-                                : iconColor,
-                          ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    // Center: Fixed Home button
+                    GestureDetector(
+                      onTap: () => onTap(homeIndex),
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        width: 64,
+                        height: 64,
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: currentIndex == homeIndex
+                              ? primaryColor
+                              : Theme.of(context).colorScheme.surfaceVariant,
+                          boxShadow: [
+                            BoxShadow(
+                              color: currentIndex == homeIndex
+                                  ? primaryColor.withOpacity(0.4)
+                                  : Colors.black.withOpacity(0.2),
+                              blurRadius: 15,
+                              offset: const Offset(0, 4),
+                              spreadRadius: 2,
+                            ),
+                          ],
                         ),
-                      );
-                    }
-
-                    // Regular nav items
-                    return Flexible(
-                      flex: isActive ? 2 : 1,
-                      child: GestureDetector(
-                        onTap: () => onTap(index),
-                        behavior: HitTestBehavior.opaque,
-                        child: _BottomNavItem(
-                          isActive: isActive,
-                          primaryColor: primaryColor,
-                          iconColor: iconColor,
-                          icon: tab['icon'] as IconData,
-                          filledIcon: tab['filledIcon'] as IconData,
-                          label: tab['label'] as String,
+                        child: Icon(
+                          currentIndex == homeIndex
+                              ? tabs[homeIndex]['filledIcon'] as IconData
+                              : tabs[homeIndex]['icon'] as IconData,
+                          size: 28,
+                          color: currentIndex == homeIndex
+                              ? Colors.white
+                              : iconColor,
                         ),
                       ),
-                    );
-                  }),
+                    ),
+                    // Right side: Web and Settings
+                    Expanded(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          for (int index = homeIndex + 1; index < tabs.length; index++)
+                            Flexible(
+                              flex: currentIndex == index ? 2 : 1,
+                              child: GestureDetector(
+                                onTap: () => onTap(index),
+                                behavior: HitTestBehavior.opaque,
+                                child: _BottomNavItem(
+                                  isActive: currentIndex == index,
+                                  primaryColor: primaryColor,
+                                  iconColor: iconColor,
+                                  icon: tabs[index]['icon'] as IconData,
+                                  filledIcon: tabs[index]['filledIcon'] as IconData,
+                                  label: tabs[index]['label'] as String,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

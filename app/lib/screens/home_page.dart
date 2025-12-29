@@ -42,7 +42,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final LocalAuthentication _auth = LocalAuthentication();
   final SmsService _smsService = SmsService();
   final PageController _pageController = PageController();
-  final PageController _mainPageController = PageController();
+  final PageController _mainPageController = PageController(initialPage: 2); // Start on Home (index 2)
 
   bool _isAuthenticated = false;
   bool _isAuthenticating = false;
