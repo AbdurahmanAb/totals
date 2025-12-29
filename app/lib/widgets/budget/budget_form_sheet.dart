@@ -125,6 +125,61 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
     }
   }
 
+  Future<void> _deleteBudget() async {
+    if (widget.budget?.id == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Budget'),
+        content: Text('Are you sure you want to delete "${widget.budget!.name}"? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final provider = Provider.of<BudgetProvider>(context, listen: false);
+      await provider.deleteBudget(widget.budget!.id!);
+
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Budget deleted successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting budget: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final categories = Provider.of<TransactionProvider>(context, listen: false)
@@ -274,6 +329,21 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
                 },
               ),
               const SizedBox(height: 24),
+              if (widget.budget != null) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _isLoading ? null : _deleteBudget,
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Delete Budget'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: BorderSide(color: Colors.red.withOpacity(0.5)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               Row(
                 children: [
                   Expanded(

@@ -49,11 +49,13 @@ class BudgetProvider with ChangeNotifier {
   Future<void> createBudget(Budget budget) async {
     try {
       final id = await _budgetRepository.insertBudget(budget);
+      // Get the created budget with its ID
+      final createdBudget = budget.copyWith(id: id);
       await loadBudgets();
       notifyListeners();
-      // Check and send notifications for budget alerts after creating new budget
+      // Check and send notifications for the specific budget that was created
       try {
-        await _budgetAlertService.checkAndNotifyBudgetAlerts();
+        await _budgetAlertService.checkAndNotifyBudgetAlert(createdBudget);
       } catch (e) {
         print("debug: Error checking budget alerts after creating budget: $e");
       }
@@ -69,6 +71,12 @@ class BudgetProvider with ChangeNotifier {
       await _budgetRepository.updateBudget(budget);
       await loadBudgets();
       notifyListeners();
+      // Check and send notifications for the specific budget that was updated
+      try {
+        await _budgetAlertService.checkAndNotifyBudgetAlert(budget);
+      } catch (e) {
+        print("debug: Error checking budget alerts after updating budget: $e");
+      }
     } catch (e) {
       print("debug: Error updating budget: $e");
       rethrow;

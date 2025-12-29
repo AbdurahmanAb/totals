@@ -86,6 +86,33 @@ class BudgetAlertService {
       await sendBudgetAlertNotification(alert);
     }
   }
+
+  // Check and send notification for a specific budget
+  Future<void> checkAndNotifyBudgetAlert(Budget budget) async {
+    try {
+      final status = await _budgetService.getBudgetStatus(budget);
+      
+      if (status.isExceeded) {
+        final alert = BudgetAlert(
+          budget: budget,
+          status: status,
+          alertType: BudgetAlertType.exceeded,
+          message: _getExceededMessage(status),
+        );
+        await sendBudgetAlertNotification(alert);
+      } else if (status.isApproachingLimit) {
+        final alert = BudgetAlert(
+          budget: budget,
+          status: status,
+          alertType: BudgetAlertType.approaching,
+          message: _getApproachingMessage(status),
+        );
+        await sendBudgetAlertNotification(alert);
+      }
+    } catch (e) {
+      print('debug: Failed to check budget alert for budget ${budget.id}: $e');
+    }
+  }
 }
 
 class BudgetAlert {
