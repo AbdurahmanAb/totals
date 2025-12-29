@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:totals/models/budget.dart';
 import 'package:totals/repositories/budget_repository.dart';
 import 'package:totals/services/budget_service.dart';
+import 'package:totals/services/budget_alert_service.dart';
 import 'package:totals/providers/transaction_provider.dart';
 
 export 'package:totals/services/budget_service.dart' show BudgetStatus;
@@ -9,6 +10,7 @@ export 'package:totals/services/budget_service.dart' show BudgetStatus;
 class BudgetProvider with ChangeNotifier {
   final BudgetRepository _budgetRepository = BudgetRepository();
   final BudgetService _budgetService = BudgetService();
+  final BudgetAlertService _budgetAlertService = BudgetAlertService();
   TransactionProvider? _transactionProvider;
 
   List<Budget> _budgets = [];
@@ -49,6 +51,12 @@ class BudgetProvider with ChangeNotifier {
       final id = await _budgetRepository.insertBudget(budget);
       await loadBudgets();
       notifyListeners();
+      // Check and send notifications for budget alerts after creating new budget
+      try {
+        await _budgetAlertService.checkAndNotifyBudgetAlerts();
+      } catch (e) {
+        print("debug: Error checking budget alerts after creating budget: $e");
+      }
       return;
     } catch (e) {
       print("debug: Error creating budget: $e");
