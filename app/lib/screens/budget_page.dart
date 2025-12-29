@@ -8,6 +8,7 @@ import 'package:totals/widgets/budget/budget_period_selector.dart';
 import 'package:totals/widgets/budget/category_budget_list.dart';
 import 'package:totals/widgets/budget/budget_form_sheet.dart';
 import 'package:totals/services/budget_service.dart';
+import 'package:totals/models/budget.dart';
 
 class BudgetPage extends StatefulWidget {
   const BudgetPage({super.key});
@@ -31,12 +32,13 @@ class _BudgetPageState extends State<BudgetPage> {
     });
   }
 
-  void _showBudgetForm({String? type, int? categoryId}) {
+  void _showBudgetForm({String? type, int? categoryId, Budget? budget}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => BudgetFormSheet(
+        budget: budget,
         initialType: type,
         initialCategoryId: categoryId,
       ),
@@ -186,7 +188,7 @@ class _BudgetPageState extends State<BudgetPage> {
                       ...budgets.map((status) => BudgetCard(
                             status: status,
                             onTap: () {
-                              _showBudgetForm();
+                              _showBudgetForm(budget: status.budget);
                             },
                           )),
                     ],
@@ -228,7 +230,9 @@ class _BudgetPageState extends State<BudgetPage> {
                   ],
                 ),
               ),
-              const CategoryBudgetList(),
+              CategoryBudgetList(
+                onBudgetTap: (budget) => _showBudgetForm(budget: budget),
+              ),
             ],
           ),
         );

@@ -3,9 +3,12 @@ import 'package:provider/provider.dart';
 import 'package:totals/providers/budget_provider.dart';
 import 'package:totals/providers/transaction_provider.dart';
 import 'package:totals/widgets/budget/budget_card.dart';
+import 'package:totals/models/budget.dart';
 
 class CategoryBudgetList extends StatelessWidget {
-  const CategoryBudgetList({super.key});
+  final Function(Budget)? onBudgetTap;
+  
+  const CategoryBudgetList({super.key, this.onBudgetTap});
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +74,9 @@ class CategoryBudgetList extends StatelessWidget {
                 return BudgetCard(
                   status: status,
                   onTap: () {
-                    // TODO: Navigate to budget details/edit
+                    if (onBudgetTap != null) {
+                      onBudgetTap!(status.budget);
+                    }
                   },
                 );
               },

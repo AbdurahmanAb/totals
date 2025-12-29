@@ -216,7 +216,7 @@ class _BottomNavItem extends StatelessWidget {
                       child: Text(
                         label,
                         style: TextStyle(
-                          fontSize: 13.0,
+                          fontSize: 11.0,
                           fontWeight: FontWeight.w600,
                           color: primaryColor,
                         ),
