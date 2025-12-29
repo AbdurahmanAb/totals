@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:totals/services/budget_service.dart';
+import 'package:totals/providers/transaction_provider.dart';
+import 'package:totals/utils/category_icons.dart';
+import 'package:totals/utils/category_style.dart';
 import 'package:totals/widgets/budget/budget_progress_bar.dart';
 
 class BudgetCard extends StatelessWidget {
@@ -44,6 +48,7 @@ class BudgetCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final statusColor = _getStatusColor();
+    final isCategoryBudget = status.budget.type == 'category' && status.budget.categoryId != null;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -63,13 +68,46 @@ class BudgetCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
-                    child: Text(
-                      status.budget.name,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
+                    child: Row(
+                      children: [
+                        if (isCategoryBudget)
+                          Consumer<TransactionProvider>(
+                            builder: (context, transactionProvider, _) {
+                              try {
+                                final category = transactionProvider.categories.firstWhere(
+                                  (c) => c.id == status.budget.categoryId,
+                                );
+                                final categoryColor = categoryTypeColor(category, context);
+                                return Container(
+                                  margin: const EdgeInsets.only(right: 12),
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: categoryColor.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    iconForCategoryKey(category.iconKey),
+                                    color: categoryColor,
+                                    size: 20,
+                                  ),
+                                );
+                              } catch (e) {
+                                return const SizedBox.shrink();
+                              }
+                            },
+                          ),
+                        Expanded(
+                          child: Text(
+                            status.budget.name,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   Container(

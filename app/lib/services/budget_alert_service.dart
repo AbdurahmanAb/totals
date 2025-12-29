@@ -113,6 +113,18 @@ class BudgetAlertService {
       print('debug: Failed to check budget alert for budget ${budget.id}: $e');
     }
   }
+
+  // Check and send notifications for budgets of a specific category
+  Future<void> checkAndNotifyBudgetAlertsForCategory(int categoryId) async {
+    try {
+      final budgets = await _budgetService.getBudgetsByCategory(categoryId);
+      for (final budget in budgets) {
+        await checkAndNotifyBudgetAlert(budget);
+      }
+    } catch (e) {
+      print('debug: Failed to check budget alerts for category $categoryId: $e');
+    }
+  }
 }
 
 class BudgetAlert {

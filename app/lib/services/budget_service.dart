@@ -96,6 +96,11 @@ class BudgetService {
     return statuses;
   }
 
+  // Get budgets by category ID
+  Future<List<Budget>> getBudgetsByCategory(int categoryId) async {
+    return await _budgetRepository.getBudgetsByCategory(categoryId);
+  }
+
   // Check if budget is exceeded or approaching limit
   Future<bool> isBudgetExceeded(Budget budget) async {
     final status = await getBudgetStatus(budget);

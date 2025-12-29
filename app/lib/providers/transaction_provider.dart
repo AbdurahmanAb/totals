@@ -335,9 +335,10 @@ class TransactionProvider with ChangeNotifier {
     );
     await loadData();
     // Check budget alerts after categorizing transaction (only for DEBIT transactions)
-    if (transaction.type == 'DEBIT') {
+    // Only check budgets for the specific category that was selected
+    if (transaction.type == 'DEBIT' && category.id != null) {
       try {
-        await _budgetAlertService.checkAndNotifyBudgetAlerts();
+        await _budgetAlertService.checkAndNotifyBudgetAlertsForCategory(category.id!);
       } catch (e) {
         print("debug: Error checking budget alerts after categorizing: $e");
       }
