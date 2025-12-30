@@ -32,6 +32,7 @@ class DatabaseHelper {
     await _ensureGiftCategories(db);
     await _assignBuiltInCategoryKeys(db);
     await _seedBuiltInCategories(db);
+    await _ensureProfileSchema(db);
 
     return db;
   }
@@ -78,7 +79,8 @@ class DatabaseHelper {
         year INTEGER,
         month INTEGER,
         day INTEGER,
-        week INTEGER
+        week INTEGER,
+        profileId INTEGER
       )
     ''');
 
@@ -132,6 +134,7 @@ class DatabaseHelper {
         accountHolderName TEXT NOT NULL,
         settledBalance REAL,
         pendingCredit REAL,
+        profileId INTEGER,
         UNIQUE(accountNumber, bank)
       )
     ''');
@@ -186,6 +189,10 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_accounts_bank ON accounts(bank)');
     await db.execute(
         'CREATE INDEX idx_accounts_accountNumber ON accounts(accountNumber)');
+    await db.execute(
+        'CREATE INDEX idx_accounts_profileId ON accounts(profileId)');
+    await db.execute(
+        'CREATE INDEX idx_transactions_profileId ON transactions(profileId)');
 
     await _seedBuiltInCategories(db);
   }
@@ -700,6 +707,104 @@ class DatabaseHelper {
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_builtInKey ON categories(builtInKey) WHERE builtInKey IS NOT NULL",
       );
     } catch (_) {}
+  }
+
+  Future<void> _ensureProfileSchema(Database db) async {
+    final tables = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('accounts', 'transactions', 'profiles')",
+    );
+    final tableNames = tables
+        .map((r) => (r['name'] as String?)?.trim())
+        .whereType<String>()
+        .toSet();
+
+    Future<Set<String>> columnNames(String table) async {
+      final cols = await db.rawQuery('PRAGMA table_info($table)');
+      return cols
+          .map((r) => (r['name'] as String?)?.trim())
+          .whereType<String>()
+          .toSet();
+    }
+
+    if (tableNames.contains('accounts')) {
+      final names = await columnNames('accounts');
+      if (!names.contains('profileId')) {
+        await db.execute('ALTER TABLE accounts ADD COLUMN profileId INTEGER');
+      }
+      await db.execute(
+        "CREATE INDEX IF NOT EXISTS idx_accounts_profileId ON accounts(profileId)",
+      );
+    }
+
+    if (tableNames.contains('transactions')) {
+      final names = await columnNames('transactions');
+      if (!names.contains('profileId')) {
+        await db
+            .execute('ALTER TABLE transactions ADD COLUMN profileId INTEGER');
+      }
+      await db.execute(
+        "CREATE INDEX IF NOT EXISTS idx_transactions_profileId ON transactions(profileId)",
+      );
+    }
+
+    if (!tableNames.contains('profiles')) {
+      await db.execute('''
+        CREATE TABLE profiles (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          createdAt TEXT NOT NULL,
+          updatedAt TEXT
+        )
+      ''');
+      tableNames.add('profiles');
+    }
+
+    if (!tableNames.contains('profiles')) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    int? activeProfileId = prefs.getInt('active_profile_id');
+
+    if (activeProfileId == null) {
+      final profileResult = await db.query(
+        'profiles',
+        orderBy: 'createdAt ASC',
+        limit: 1,
+      );
+
+      if (profileResult.isNotEmpty) {
+        activeProfileId = profileResult.first['id'] as int?;
+      }
+
+      if (activeProfileId == null) {
+        activeProfileId = await db.insert(
+          'profiles',
+          {
+            'name': 'Personal',
+            'createdAt': DateTime.now().toIso8601String(),
+          },
+        );
+      }
+
+      await prefs.setInt('active_profile_id', activeProfileId);
+    }
+
+    if (activeProfileId == null) return;
+
+    if (tableNames.contains('accounts')) {
+      await db.update(
+        'accounts',
+        {'profileId': activeProfileId},
+        where: 'profileId IS NULL',
+      );
+    }
+
+    if (tableNames.contains('transactions')) {
+      await db.update(
+        'transactions',
+        {'profileId': activeProfileId},
+        where: 'profileId IS NULL',
+      );
+    }
   }
 
   Future<void> _assignBuiltInCategoryKeys(Database db) async {
