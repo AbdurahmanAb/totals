@@ -1,17 +1,31 @@
 import 'package:sqflite/sqflite.dart' hide Transaction;
 import 'package:totals/database/database_helper.dart';
 import 'package:totals/models/transaction.dart';
+import 'package:totals/repositories/profile_repository.dart';
 import 'package:totals/services/bank_config_service.dart';
 import 'package:totals/services/receiver_category_service.dart';
 import 'package:totals/services/notification_settings_service.dart';
 
 class TransactionRepository {
   final BankConfigService _bankConfigService = BankConfigService();
+  final ProfileRepository _profileRepo = ProfileRepository();
+
+  Future<int?> _getActiveProfileId() async {
+    return await _profileRepo.getActiveProfileId();
+  }
 
   Future<List<Transaction>> getTransactions() async {
     final db = await DatabaseHelper.instance.database;
-    final List<Map<String, dynamic>> maps =
-        await db.query('transactions', orderBy: 'time DESC, id DESC');
+    final activeProfileId = await _getActiveProfileId();
+    
+    final List<Map<String, dynamic>> maps = activeProfileId != null
+        ? await db.query(
+            'transactions',
+            where: 'profileId = ?',
+            whereArgs: [activeProfileId],
+            orderBy: 'time DESC, id DESC',
+          )
+        : await db.query('transactions', orderBy: 'time DESC, id DESC');
 
     return maps.map<Transaction>((map) {
       return Transaction.fromJson({
@@ -27,6 +41,7 @@ class TransactionRepository {
         'transactionLink': map['transactionLink'],
         'accountNumber': map['accountNumber'],
         'categoryId': map['categoryId'],
+        'profileId': map['profileId'],
       });
     }).toList();
   }
@@ -36,6 +51,10 @@ class TransactionRepository {
     bool skipAutoCategorization = false,
   }) async {
     final db = await DatabaseHelper.instance.database;
+    final activeProfileId = await _getActiveProfileId();
+    
+    // Use transaction's profileId if provided, otherwise use active profile
+    final profileId = transaction.profileId ?? activeProfileId;
 
     // Apply auto-categorization if enabled and transaction has no category
     // Skip if explicitly requested (e.g., when user clears category)
@@ -93,6 +112,9 @@ class TransactionRepository {
     
     print("debug: Saving transaction ${transactionToSave.reference} with categoryId: ${dataToSave['categoryId']}");
     
+    // Add profileId to dataToSave
+    dataToSave['profileId'] = profileId;
+    
     await db.insert(
       'transactions',
       dataToSave,
@@ -104,9 +126,13 @@ class TransactionRepository {
 
   Future<void> saveAllTransactions(List<Transaction> transactions) async {
     final db = await DatabaseHelper.instance.database;
+    final activeProfileId = await _getActiveProfileId();
     final batch = db.batch();
 
     for (var transaction in transactions) {
+      // Use transaction's profileId if provided, otherwise use active profile
+      final profileId = transaction.profileId ?? activeProfileId;
+      
       // Parse and extract date components for faster queries
       int? year, month, day, week;
       if (transaction.time != null) {
@@ -136,6 +162,7 @@ class TransactionRepository {
           'transactionLink': transaction.transactionLink,
           'accountNumber': transaction.accountNumber,
           'categoryId': transaction.categoryId,
+          'profileId': profileId,
           'year': year,
           'month': month,
           'day': day,
@@ -173,6 +200,13 @@ class TransactionRepository {
     // Build WHERE clause using date columns for fast indexed queries
     final whereParts = <String>[];
     final whereArgs = <dynamic>[];
+    final activeProfileId = await _getActiveProfileId();
+
+    // Filter by profile if active
+    if (activeProfileId != null) {
+      whereParts.add('profileId = ?');
+      whereArgs.add(activeProfileId);
+    }
 
     // Date range condition using indexed columns
     whereParts.add(
@@ -239,9 +273,15 @@ class TransactionRepository {
     int? bankId,
   }) async {
     final db = await DatabaseHelper.instance.database;
+    final activeProfileId = await _getActiveProfileId();
 
     final whereParts = <String>['year = ? AND month = ?'];
     final whereArgs = <dynamic>[year, month];
+
+    if (activeProfileId != null) {
+      whereParts.add('profileId = ?');
+      whereArgs.add(activeProfileId);
+    }
 
     if (bankId != null) {
       whereParts.add('bankId = ?');
@@ -271,6 +311,7 @@ class TransactionRepository {
         'transactionLink': map['transactionLink'],
         'accountNumber': map['accountNumber'],
         'categoryId': map['categoryId'],
+        'profileId': map['profileId'],
       });
     }).toList();
   }
@@ -289,18 +330,32 @@ class TransactionRepository {
 
   /// Delete transactions associated with an account
   /// Uses the same matching logic as TransactionProvider to identify transactions
+  /// Only deletes transactions within the current active profile
   Future<void> deleteTransactionsByAccount(
       String accountNumber, int bank) async {
     final db = await DatabaseHelper.instance.database;
+    final activeProfileId = await _getActiveProfileId();
     final banks = await _bankConfigService.getBanks();
     final currentBank = banks.firstWhere((b) => b.id == bank);
 
+    // Build where clause with profile filtering
+    final whereParts = <String>[];
+    final whereArgs = <dynamic>[];
+
+    if (activeProfileId != null) {
+      whereParts.add('profileId = ?');
+      whereArgs.add(activeProfileId);
+    }
+
     // For banks that match by bankId only (Awash=2, Telebirr=6), delete all transactions for that bank
     if (currentBank.uniformMasking == false) {
+      whereParts.add('bankId = ?');
+      whereArgs.add(bank);
+      
       await db.delete(
         'transactions',
-        where: 'bankId = ?',
-        whereArgs: [bank],
+        where: whereParts.join(' AND '),
+        whereArgs: whereArgs,
       );
       return;
     }
@@ -314,20 +369,29 @@ class TransactionRepository {
     }
 
     if (accountSuffix != null) {
+      whereParts.add('bankId = ?');
+      whereArgs.add(bank);
+      whereParts.add('accountNumber IS NOT NULL');
+      whereParts.add('accountNumber LIKE ?');
+      whereArgs.add('%$accountSuffix');
+      
       // Delete transactions where bankId matches and accountNumber ends with the suffix
       // Using SQL LIKE pattern matching to match the suffix at the end
       await db.delete(
         'transactions',
-        where:
-            'bankId = ? AND accountNumber IS NOT NULL AND accountNumber LIKE ?',
-        whereArgs: [bank, '%$accountSuffix'],
+        where: whereParts.join(' AND '),
+        whereArgs: whereArgs,
       );
     } else {
       // Fallback: delete all transactions for this bank (except NULL accountNumber ones)
+      whereParts.add('bankId = ?');
+      whereArgs.add(bank);
+      whereParts.add('accountNumber IS NOT NULL');
+      
       await db.delete(
         'transactions',
-        where: 'bankId = ? AND accountNumber IS NOT NULL',
-        whereArgs: [bank],
+        where: whereParts.join(' AND '),
+        whereArgs: whereArgs,
       );
     }
   }

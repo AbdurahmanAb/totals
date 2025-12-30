@@ -11,6 +11,7 @@ class Transaction {
   final String? transactionLink;
   final String? accountNumber; // Last 4 digits
   final int? categoryId;
+  final int? profileId;
 
   Transaction({
     required this.amount,
@@ -25,6 +26,7 @@ class Transaction {
     this.transactionLink,
     this.accountNumber,
     this.categoryId,
+    this.profileId,
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
@@ -47,6 +49,7 @@ class Transaction {
       transactionLink: json['transactionLink'],
       accountNumber: json['accountNumber'],
       categoryId: json['categoryId'],
+      profileId: json['profileId'] as int?,
     );
   }
 
@@ -63,6 +66,7 @@ class Transaction {
         'transactionLink': transactionLink,
         'accountNumber': accountNumber,
         'categoryId': categoryId,
+        if (profileId != null) 'profileId': profileId,
       };
 
   Transaction copyWith({
@@ -78,6 +82,7 @@ class Transaction {
     String? transactionLink,
     String? accountNumber,
     int? categoryId,
+    int? profileId,
     bool clearCategoryId = false, // Flag to explicitly clear categoryId
   }) {
     return Transaction(
@@ -95,6 +100,7 @@ class Transaction {
       categoryId: clearCategoryId 
           ? null 
           : (categoryId ?? this.categoryId),
+      profileId: profileId ?? this.profileId,
     );
   }
 }

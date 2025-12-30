@@ -49,54 +49,23 @@ class DataExportImportService {
       final version = data['version'] ?? '1.0';
 
       // Import accounts (append, skip duplicates)
+      // Use repository to ensure they're associated with active profile
       if (data['accounts'] != null) {
         final accountsList = (data['accounts'] as List)
             .map((json) => Account.fromJson(json as Map<String, dynamic>))
             .toList();
-        final batch = db.batch();
-        for (var account in accountsList) {
-          batch.insert(
-            'accounts',
-            {
-              'accountNumber': account.accountNumber,
-              'bank': account.bank,
-              'balance': account.balance,
-              'accountHolderName': account.accountHolderName,
-              'settledBalance': account.settledBalance,
-              'pendingCredit': account.pendingCredit,
-            },
-            conflictAlgorithm: ConflictAlgorithm.ignore, // Skip if exists
-          );
-        }
-        await batch.commit(noResult: true);
+        // Use saveAllAccounts which will auto-associate with active profile
+        await _accountRepo.saveAllAccounts(accountsList);
       }
 
       // Import transactions (append, skip duplicates based on reference)
+      // Use repository to ensure they're associated with active profile
       if (data['transactions'] != null) {
         final transactionsList = (data['transactions'] as List)
             .map((json) => Transaction.fromJson(json as Map<String, dynamic>))
             .toList();
-        final batch = db.batch();
-        for (var transaction in transactionsList) {
-          batch.insert(
-            'transactions',
-            {
-              'amount': transaction.amount,
-              'reference': transaction.reference,
-              'creditor': transaction.creditor,
-              'receiver': transaction.receiver,
-              'time': transaction.time,
-              'status': transaction.status,
-              'currentBalance': transaction.currentBalance,
-              'bankId': transaction.bankId,
-              'type': transaction.type,
-              'transactionLink': transaction.transactionLink,
-              'accountNumber': transaction.accountNumber,
-            },
-            conflictAlgorithm: ConflictAlgorithm.ignore, // Skip if reference exists
-          );
-        }
-        await batch.commit(noResult: true);
+        // Use saveAllTransactions which will auto-associate with active profile
+        await _transactionRepo.saveAllTransactions(transactionsList);
       }
 
       // Import failed parses (append)

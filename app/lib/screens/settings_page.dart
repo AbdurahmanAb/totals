@@ -618,19 +618,22 @@ class _SettingsPageState extends State<SettingsPage>
 
   Future<void> _navigateToManageProfiles() async {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Profile settings are coming soon.',
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-        ),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ProfileManagementPage(),
       ),
     );
+    // Refresh the page and reload transaction data if profile was changed
+    if (result == true && mounted) {
+      setState(() {});
+      // Reload transaction provider to show new profile's data
+      try {
+        Provider.of<TransactionProvider>(context, listen: false).loadData();
+      } catch (e) {
+        print("debug: Error reloading transaction provider: $e");
+      }
+    }
   }
 
   @override

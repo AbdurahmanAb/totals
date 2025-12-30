@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:totals/models/category.dart' as models;
 
 class DatabaseHelper {
@@ -20,7 +21,7 @@ class DatabaseHelper {
 
     final db = await openDatabase(
       path,
-      version: 14,
+      version: 15,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -31,6 +32,7 @@ class DatabaseHelper {
     await _ensureGiftCategories(db);
     await _assignBuiltInCategoryKeys(db);
     await _seedBuiltInCategories(db);
+    await _ensureProfileSchema(db);
 
     return db;
   }
@@ -77,7 +79,8 @@ class DatabaseHelper {
         year INTEGER,
         month INTEGER,
         day INTEGER,
-        week INTEGER
+        week INTEGER,
+        profileId INTEGER
       )
     ''');
 
@@ -131,6 +134,7 @@ class DatabaseHelper {
         accountHolderName TEXT NOT NULL,
         settledBalance REAL,
         pendingCredit REAL,
+        profileId INTEGER,
         UNIQUE(accountNumber, bank)
       )
     ''');
@@ -185,6 +189,10 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_accounts_bank ON accounts(bank)');
     await db.execute(
         'CREATE INDEX idx_accounts_accountNumber ON accounts(accountNumber)');
+    await db.execute(
+        'CREATE INDEX idx_accounts_profileId ON accounts(profileId)');
+    await db.execute(
+        'CREATE INDEX idx_transactions_profileId ON transactions(profileId)');
 
     await _seedBuiltInCategories(db);
   }
@@ -458,6 +466,79 @@ class DatabaseHelper {
         print("debug: Error adding receiver_category_mappings table (might already exist): $e");
       }
     }
+
+    if (oldVersion < 15) {
+      // Add profileId columns to accounts and transactions tables for version 15
+      try {
+        // Add profileId to accounts table
+        await db.execute('ALTER TABLE accounts ADD COLUMN profileId INTEGER');
+        print("debug: Added profileId column to accounts table");
+        
+        // Add profileId to transactions table
+        await db.execute('ALTER TABLE transactions ADD COLUMN profileId INTEGER');
+        print("debug: Added profileId column to transactions table");
+        
+        // Create indexes for better query performance
+        await db.execute(
+          "CREATE INDEX IF NOT EXISTS idx_accounts_profileId ON accounts(profileId)",
+        );
+        await db.execute(
+          "CREATE INDEX IF NOT EXISTS idx_transactions_profileId ON transactions(profileId)",
+        );
+        print("debug: Created indexes for profileId columns");
+        
+        // Migrate existing data: assign all existing accounts/transactions to active profile
+        // Get active profile ID (or first profile if none active)
+        // Access SharedPreferences directly to avoid circular dependency during migration
+        final prefs = await SharedPreferences.getInstance();
+        int? activeProfileId = prefs.getInt('active_profile_id');
+        
+        if (activeProfileId == null) {
+          // Get first profile from database
+          final profileResult = await db.query(
+            'profiles',
+            orderBy: 'createdAt ASC',
+            limit: 1,
+          );
+          
+          if (profileResult.isNotEmpty) {
+            activeProfileId = profileResult.first['id'] as int?;
+            if (activeProfileId != null) {
+              await prefs.setInt('active_profile_id', activeProfileId);
+            }
+          } else {
+            // Create default profile
+            final defaultProfileId = await db.insert(
+              'profiles',
+              {
+                'name': 'Personal',
+                'createdAt': DateTime.now().toIso8601String(),
+              },
+            );
+            activeProfileId = defaultProfileId;
+            await prefs.setInt('active_profile_id', activeProfileId);
+          }
+        }
+        
+        // Update all existing accounts to use active profile
+        await db.update(
+          'accounts',
+          {'profileId': activeProfileId},
+          where: 'profileId IS NULL',
+        );
+        print("debug: Migrated existing accounts to profile $activeProfileId");
+        
+        // Update all existing transactions to use active profile
+        await db.update(
+          'transactions',
+          {'profileId': activeProfileId},
+          where: 'profileId IS NULL',
+        );
+        print("debug: Migrated existing transactions to profile $activeProfileId");
+      } catch (e) {
+        print("debug: Error adding profileId columns (might already exist): $e");
+      }
+    }
   }
 
   Future<void> _seedBuiltInCategories(Database db) async {
@@ -626,6 +707,104 @@ class DatabaseHelper {
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_builtInKey ON categories(builtInKey) WHERE builtInKey IS NOT NULL",
       );
     } catch (_) {}
+  }
+
+  Future<void> _ensureProfileSchema(Database db) async {
+    final tables = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('accounts', 'transactions', 'profiles')",
+    );
+    final tableNames = tables
+        .map((r) => (r['name'] as String?)?.trim())
+        .whereType<String>()
+        .toSet();
+
+    Future<Set<String>> columnNames(String table) async {
+      final cols = await db.rawQuery('PRAGMA table_info($table)');
+      return cols
+          .map((r) => (r['name'] as String?)?.trim())
+          .whereType<String>()
+          .toSet();
+    }
+
+    if (tableNames.contains('accounts')) {
+      final names = await columnNames('accounts');
+      if (!names.contains('profileId')) {
+        await db.execute('ALTER TABLE accounts ADD COLUMN profileId INTEGER');
+      }
+      await db.execute(
+        "CREATE INDEX IF NOT EXISTS idx_accounts_profileId ON accounts(profileId)",
+      );
+    }
+
+    if (tableNames.contains('transactions')) {
+      final names = await columnNames('transactions');
+      if (!names.contains('profileId')) {
+        await db
+            .execute('ALTER TABLE transactions ADD COLUMN profileId INTEGER');
+      }
+      await db.execute(
+        "CREATE INDEX IF NOT EXISTS idx_transactions_profileId ON transactions(profileId)",
+      );
+    }
+
+    if (!tableNames.contains('profiles')) {
+      await db.execute('''
+        CREATE TABLE profiles (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          createdAt TEXT NOT NULL,
+          updatedAt TEXT
+        )
+      ''');
+      tableNames.add('profiles');
+    }
+
+    if (!tableNames.contains('profiles')) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    int? activeProfileId = prefs.getInt('active_profile_id');
+
+    if (activeProfileId == null) {
+      final profileResult = await db.query(
+        'profiles',
+        orderBy: 'createdAt ASC',
+        limit: 1,
+      );
+
+      if (profileResult.isNotEmpty) {
+        activeProfileId = profileResult.first['id'] as int?;
+      }
+
+      if (activeProfileId == null) {
+        activeProfileId = await db.insert(
+          'profiles',
+          {
+            'name': 'Personal',
+            'createdAt': DateTime.now().toIso8601String(),
+          },
+        );
+      }
+
+      await prefs.setInt('active_profile_id', activeProfileId);
+    }
+
+    if (activeProfileId == null) return;
+
+    if (tableNames.contains('accounts')) {
+      await db.update(
+        'accounts',
+        {'profileId': activeProfileId},
+        where: 'profileId IS NULL',
+      );
+    }
+
+    if (tableNames.contains('transactions')) {
+      await db.update(
+        'transactions',
+        {'profileId': activeProfileId},
+        where: 'profileId IS NULL',
+      );
+    }
   }
 
   Future<void> _assignBuiltInCategoryKeys(Database db) async {

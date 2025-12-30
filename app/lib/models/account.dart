@@ -7,6 +7,7 @@ class Account {
   final String accountHolderName;
   final double? settledBalance;
   final double? pendingCredit;
+  final int? profileId;
 
   Account({
     required this.accountNumber,
@@ -15,6 +16,7 @@ class Account {
     required this.accountHolderName,
     this.settledBalance,
     this.pendingCredit,
+    this.profileId,
   });
 
   factory Account.fromJson(Map<String, dynamic> json) {
@@ -25,6 +27,7 @@ class Account {
       accountHolderName: json['accountHolderName'],
       settledBalance: json['settledBalance']?.toDouble(),
       pendingCredit: json['pendingCredit']?.toDouble(),
+      profileId: json['profileId'] as int?,
     );
   }
 
@@ -36,6 +39,7 @@ class Account {
       'accountHolderName': accountHolderName,
       'settledBalance': settledBalance,
       'pendingCredit': pendingCredit,
+      if (profileId != null) 'profileId': profileId,
     };
   }
 
