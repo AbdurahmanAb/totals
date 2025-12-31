@@ -14,11 +14,27 @@ class CustomBottomNavModern extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tabs = [
-      {'icon': Icons.analytics_outlined, 'filledIcon': Icons.analytics, 'label': 'Analytics'},
-      {'icon': Icons.account_balance_wallet_outlined, 'filledIcon': Icons.account_balance_wallet, 'label': 'Budget'},
+      {
+        'icon': Icons.analytics_outlined,
+        'filledIcon': Icons.analytics,
+        'label': 'Analytics'
+      },
+      {
+        'icon': Icons.account_balance_wallet_outlined,
+        'filledIcon': Icons.account_balance_wallet,
+        'label': 'Budget'
+      },
       {'icon': Icons.home_outlined, 'filledIcon': Icons.home, 'label': 'Home'},
-      {'icon': Icons.web_outlined, 'filledIcon': Icons.web, 'label': 'Web'},
-      {'icon': Icons.settings_outlined, 'filledIcon': Icons.settings, 'label': 'Settings'},
+      {
+        'icon': Icons.build_outlined,
+        'filledIcon': Icons.build,
+        'label': 'Tools'
+      },
+      {
+        'icon': Icons.settings_outlined,
+        'filledIcon': Icons.settings,
+        'label': 'Settings'
+      },
     ];
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -38,7 +54,9 @@ class CustomBottomNavModern extends StatelessWidget {
               color: Theme.of(context).canvasColor.withOpacity(0.85),
               borderRadius: BorderRadius.circular(32),
               border: Border.all(
-                color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05),
+                color: isDark
+                    ? Colors.white.withOpacity(0.1)
+                    : Colors.black.withOpacity(0.05),
                 width: 1,
               ),
               boxShadow: [
@@ -74,7 +92,8 @@ class CustomBottomNavModern extends StatelessWidget {
                                   primaryColor: primaryColor,
                                   iconColor: iconColor,
                                   icon: tabs[index]['icon'] as IconData,
-                                  filledIcon: tabs[index]['filledIcon'] as IconData,
+                                  filledIcon:
+                                      tabs[index]['filledIcon'] as IconData,
                                   label: tabs[index]['label'] as String,
                                 ),
                               ),
@@ -122,7 +141,9 @@ class CustomBottomNavModern extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          for (int index = homeIndex + 1; index < tabs.length; index++)
+                          for (int index = homeIndex + 1;
+                              index < tabs.length;
+                              index++)
                             Flexible(
                               flex: currentIndex == index ? 2 : 1,
                               child: GestureDetector(
@@ -133,7 +154,8 @@ class CustomBottomNavModern extends StatelessWidget {
                                   primaryColor: primaryColor,
                                   iconColor: iconColor,
                                   icon: tabs[index]['icon'] as IconData,
-                                  filledIcon: tabs[index]['filledIcon'] as IconData,
+                                  filledIcon:
+                                      tabs[index]['filledIcon'] as IconData,
                                   label: tabs[index]['label'] as String,
                                 ),
                               ),
@@ -181,15 +203,16 @@ class _BottomNavItem extends StatelessWidget {
       alignment: Alignment.center,
       height: 48,
       padding: EdgeInsets.symmetric(
-        horizontal: isActive ? 12 : 4, // Reduced padding for inactive state prevents overflow
+        horizontal: isActive
+            ? 12
+            : 4, // Reduced padding for inactive state prevents overflow
       ),
       decoration: BoxDecoration(
-        color: isActive
-            ? primaryColor.withOpacity(0.1)
-            : Colors.transparent,
+        color: isActive ? primaryColor.withOpacity(0.1) : Colors.transparent,
         borderRadius: BorderRadius.circular(24),
       ),
-      child: SingleChildScrollView( // Add scrolling to prevent crash on small overflow
+      child: SingleChildScrollView(
+        // Add scrolling to prevent crash on small overflow
         scrollDirection: Axis.horizontal,
         physics: const NeverScrollableScrollPhysics(),
         child: Row(

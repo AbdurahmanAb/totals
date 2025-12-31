@@ -21,7 +21,7 @@ class DatabaseHelper {
 
     final db = await openDatabase(
       path,
-      version: 15,
+      version: 16,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -185,6 +185,18 @@ class DatabaseHelper {
       "CREATE INDEX idx_receiver_mappings_categoryId ON receiver_category_mappings(categoryId)",
     );
 
+    // User accounts table (for quick access accounts)
+    await db.execute('''
+      CREATE TABLE user_accounts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        accountNumber TEXT NOT NULL,
+        bankId INTEGER NOT NULL,
+        accountHolderName TEXT NOT NULL,
+        createdAt TEXT NOT NULL,
+        UNIQUE(accountNumber, bankId)
+      )
+    ''');
+
     // Create indexes for better query performance
     await db.execute(
         'CREATE INDEX idx_transactions_reference ON transactions(reference)');
@@ -217,6 +229,10 @@ class DatabaseHelper {
         .execute('CREATE INDEX idx_accounts_profileId ON accounts(profileId)');
     await db.execute(
         'CREATE INDEX idx_transactions_profileId ON transactions(profileId)');
+    await db.execute(
+        'CREATE INDEX idx_user_accounts_bankId ON user_accounts(bankId)');
+    await db.execute(
+        'CREATE INDEX idx_user_accounts_accountNumber ON user_accounts(accountNumber)');
 
     await _seedBuiltInCategories(db);
   }
@@ -520,6 +536,32 @@ class DatabaseHelper {
       } catch (e) {
         print(
             "debug: Error adding receiver_category_mappings table (might already exist): $e");
+      }
+    }
+
+    if (oldVersion < 16) {
+      // Add user_accounts table for version 16
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS user_accounts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            accountNumber TEXT NOT NULL,
+            bankId INTEGER NOT NULL,
+            accountHolderName TEXT NOT NULL,
+            createdAt TEXT NOT NULL,
+            UNIQUE(accountNumber, bankId)
+          )
+        ''');
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_user_accounts_bankId ON user_accounts(bankId)',
+        );
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_user_accounts_accountNumber ON user_accounts(accountNumber)',
+        );
+        print("debug: Added user_accounts table");
+      } catch (e) {
+        print(
+            "debug: Error adding user_accounts table (might already exist): $e");
       }
     }
 

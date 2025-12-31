@@ -18,7 +18,7 @@ import 'package:totals/widgets/detected_banks_widget.dart';
 import 'package:totals/screens/failed_parses_page.dart';
 import 'package:totals/screens/analytics_page.dart';
 import 'package:totals/screens/budget_page.dart';
-import 'package:totals/screens/web_page.dart';
+import 'package:totals/screens/tools_page.dart';
 import 'package:totals/screens/settings_page.dart';
 import 'package:totals/services/notification_service.dart';
 import 'package:totals/services/notification_intent_bus.dart';
@@ -42,7 +42,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final LocalAuthentication _auth = LocalAuthentication();
   final SmsService _smsService = SmsService();
   final PageController _pageController = PageController();
-  final PageController _mainPageController = PageController(initialPage: 2); // Start on Home (index 2)
+  final PageController _mainPageController =
+      PageController(initialPage: 2); // Start on Home (index 2)
 
   bool _isAuthenticated = false;
   bool _isAuthenticating = false;
@@ -192,7 +193,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }) async {
     if (!mounted) return;
 
-    if (_bottomNavIndex != 2) { // Home is now at index 2
+    if (_bottomNavIndex != 2) {
+      // Home is now at index 2
       setState(() {
         _bottomNavIndex = 2; // Home is now at index 2
       });
@@ -598,7 +600,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final references =
         transactions.map((transaction) => transaction.reference).toSet();
     setState(() {
-      _selectedTodayReferences = references.difference(_selectedTodayReferences);
+      _selectedTodayReferences =
+          references.difference(_selectedTodayReferences);
     });
   }
 
@@ -724,7 +727,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: _isRefreshingTodaySms ? null : () => _refreshTodaySms(provider),
+          onTap:
+              _isRefreshingTodaySms ? null : () => _refreshTodaySms(provider),
           borderRadius: BorderRadius.circular(12),
           child: Container(
             width: 42,
@@ -961,15 +965,16 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                         ? [
                                             IconButton(
                                               tooltip: 'Select all',
-                                              icon: const Icon(
-                                                  Icons.select_all),
+                                              icon:
+                                                  const Icon(Icons.select_all),
                                               onPressed: () =>
                                                   _toggleSelectAllToday(
                                                       filteredToday),
                                             ),
                                             IconButton(
                                               tooltip: 'Invert selection',
-                                              icon: const Icon(Icons.swap_horiz),
+                                              icon:
+                                                  const Icon(Icons.swap_horiz),
                                               onPressed: () =>
                                                   _invertTodaySelection(
                                                       filteredToday),
@@ -1055,8 +1060,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                         selectionMode: _isTodaySelectionMode,
                                         selectedReferences:
                                             _selectedTodayReferences,
-                                        onTransactionTap:
-                                            (transaction) async {
+                                        onTransactionTap: (transaction) async {
                                           if (_isTodaySelectionMode) {
                                             _toggleTodaySelection(transaction);
                                             return;
@@ -1113,7 +1117,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             );
           },
         ), // index 2 - Home
-        const WebPage(), // index 3
+        const ToolsPage(), // index 3
         const SettingsPage(), // index 4
       ],
     );
