@@ -506,6 +506,26 @@ class SmsConfigService {
       refRequired: true,
       hasAccount: false,
     ),
+    SmsPattern(
+      bankId: 6,
+      senderId: "telebirr",
+      regex:
+          r"You\s+have\s+paid\s+ETB\s+(?<amount>[\d,.]+)\s+for\s+(?<receiver>.+?)\s+with\s+payment\s+code\s+(?<reference>[A-Z0-9]+)\s+on\s+(?<date>\d{2}/\d{2}/\d{4}).*?balance\s+is\s+ETB\s+(?<balance>[\d,.]+)",
+      type: "DEBIT",
+      description: "Telebirr 127 Payment",
+      refRequired: true,
+      hasAccount: false,
+    ),
+    SmsPattern(
+      bankId: 6,
+      senderId: "telebirr",
+      regex:
+          r"You\s+have\s+recharged\s+ETB\s+(?<amount>[\d,.]+)\s+airtime\s+for\s+(?<receiver>[\d]+)\s+on\s+(?<date>\d{2}/\d{2}/\d{4}).*?transaction\s+number\s+is\s+(?<reference>[A-Z0-9]+).*?balance\s+is\s+ETB\s+(?<balance>[\d,.]+)",
+      type: "DEBIT",
+      description: "Telebirr Airtime Recharge",
+      refRequired: true,
+      hasAccount: false,
+    ),
   ];
   void debugSms(String smsText) {
     // Show invisible characters
