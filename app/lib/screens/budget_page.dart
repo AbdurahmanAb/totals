@@ -108,6 +108,16 @@ class _BudgetPageState extends State<BudgetPage> {
                 Expanded(
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 300),
+                    layoutBuilder: (currentChild, previousChildren) {
+                      return Stack(
+                        alignment: Alignment.topCenter,
+                        fit: StackFit.expand,
+                        children: [
+                          ...previousChildren,
+                          if (currentChild != null) currentChild,
+                        ],
+                      );
+                    },
                     child: _selectedView == 'overview'
                         ? _buildOverviewView()
                         : _buildCategoriesView(),
