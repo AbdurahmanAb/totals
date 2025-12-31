@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -367,17 +368,17 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
     _WrappedSummary summary,
   ) {
     final accents = [
-      const Color(0xFF2E6DF6),
-      const Color(0xFF2BB673),
-      const Color(0xFFE16A3D),
-      const Color(0xFF10A6A6),
-      const Color(0xFFF4B740),
-      const Color(0xFF00B4D8),
-      const Color(0xFFEF476F),
-      const Color(0xFF118AB2),
-      const Color(0xFF06D6A0),
-      const Color(0xFFFA7921),
-      const Color(0xFF4D96FF),
+      const Color(0xFF2E6DF6), // Royal Blue
+      const Color(0xFF00C853), // Emerald
+      const Color(0xFFFF5252), // Rose
+      const Color(0xFF10A6A6), // Teal
+      const Color(0xFFFFB300), // Amber
+      const Color(0xFF00B4D8), // Sky
+      const Color(0xFFEF476F), // Pink
+      const Color(0xFF118AB2), // Blue
+      const Color(0xFF06D6A0), // Mint
+      const Color(0xFFFA7921), // Orange
+      const Color(0xFF4D96FF), // Neon Blue
     ];
 
     final monthLabel = summary.topMonth.month == null
@@ -421,7 +422,7 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
         value: '${summary.totalTransactions}',
         subtitle:
             'Transactions across ${summary.activeDays} active days in $_wrappedYear.',
-        icon: Icons.auto_awesome,
+        icon: Icons.auto_awesome_rounded,
         accent: accents[0],
         footnote: 'Swipe to keep going.',
       ),
@@ -430,7 +431,7 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
         title: 'Total money in',
         value: _formatCompactCurrency(summary.totalIncome),
         subtitle: _formatCurrency(summary.totalIncome),
-        icon: Icons.trending_up,
+        icon: Icons.trending_up_rounded,
         accent: accents[1],
       ),
       _WrappedSlideData(
@@ -438,7 +439,7 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
         title: 'Total money out',
         value: _formatCompactCurrency(summary.totalExpense),
         subtitle: _formatCurrency(summary.totalExpense),
-        icon: Icons.trending_down,
+        icon: Icons.trending_down_rounded,
         accent: accents[2],
       ),
       _WrappedSlideData(
@@ -448,7 +449,7 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
         subtitle: summary.feeTransactionCount == 0
             ? 'No fees captured in $_wrappedYear.'
             : 'You spent ${_formatCurrency(totalFees)} in fees across ${summary.feeTransactionCount} transactions.$feeDetailText',
-        icon: Icons.receipt_long_outlined,
+        icon: Icons.receipt_long_rounded,
         accent: accents[10],
       ),
       _WrappedSlideData(
@@ -458,7 +459,7 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
         subtitle: summary.netFlow >= 0
             ? 'More income than spend.'
             : 'More spend than income.',
-        icon: Icons.account_balance_wallet_outlined,
+        icon: Icons.account_balance_wallet_rounded,
         accent: accents[3],
       ),
       _WrappedSlideData(
@@ -468,7 +469,7 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
         subtitle: summary.topCategory.amount == 0
             ? 'No expense categories found in $_wrappedYear.'
             : '${_formatCurrency(summary.topCategory.amount)} - ${(summary.topCategory.share * 100).round()}% of spending',
-        icon: Icons.local_florist_outlined,
+        icon: Icons.category_rounded,
         accent: accents[4],
       ),
       _WrappedSlideData(
@@ -480,7 +481,7 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
         subtitle: summary.topSentTo.amount == 0
             ? 'No outgoing transfers yet.'
             : _formatCurrency(summary.topSentTo.amount),
-        icon: Icons.send_outlined,
+        icon: Icons.send_rounded,
         accent: accents[5],
       ),
       _WrappedSlideData(
@@ -492,7 +493,7 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
         subtitle: summary.topReceivedFrom.amount == 0
             ? 'No incoming transfers yet.'
             : _formatCurrency(summary.topReceivedFrom.amount),
-        icon: Icons.call_received_outlined,
+        icon: Icons.call_received_rounded,
         accent: accents[6],
       ),
       _WrappedSlideData(
@@ -500,7 +501,7 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
         title: 'Most active month',
         value: monthLabel,
         subtitle: monthSubtitle,
-        icon: Icons.calendar_today_outlined,
+        icon: Icons.calendar_today_rounded,
         accent: accents[7],
       ),
       _WrappedSlideData(
@@ -508,7 +509,7 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
         title: 'Largest transaction',
         value: biggestLabel,
         subtitle: biggestSubtitle,
-        icon: Icons.flash_on_outlined,
+        icon: Icons.bolt_rounded,
         accent: accents[8],
       ),
       _WrappedSlideData(
@@ -518,7 +519,7 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
         subtitle: summary.topBank.count == 0
             ? 'Add more activity to unlock this highlight.'
             : '${summary.topBank.count} transactions in $_wrappedYear.',
-        icon: Icons.account_balance_outlined,
+        icon: Icons.account_balance_rounded,
         accent: accents[9],
         footnote: 'End of recap. Swipe back anytime.',
       ),
@@ -538,8 +539,14 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
 
     if (provider.isLoading && transactions.isEmpty) {
       return Scaffold(
+        extendBodyBehindAppBar: true,
         appBar: AppBar(
-          title: const Text('Wrapped 2025'),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
         ),
         body: const Center(child: CircularProgressIndicator()),
       );
@@ -570,7 +577,21 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('Wrapped 2025'),
+        scrolledUnderElevation: 0,
+        centerTitle: true,
+        title: Text(
+          'WRAPPED 2025',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 2.0,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: Stack(
         children: [
@@ -602,7 +623,7 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
             child: SafeArea(
               top: false,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                 child: _buildPageIndicator(
                   context,
                   totalPages,
@@ -621,32 +642,25 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
     int total,
     Color accent,
   ) {
-    final inactive =
-        Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.35);
     return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Row(
+          mainAxisSize: MainAxisSize.min,
           children: List.generate(total, (index) {
             final isActive = index == _currentPage;
             return AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              margin: const EdgeInsets.only(right: 6),
-              height: 8,
-              width: isActive ? 22 : 8,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              height: 4,
+              width: isActive ? 32 : 12,
               decoration: BoxDecoration(
-                color: isActive ? accent : inactive,
-                borderRadius: BorderRadius.circular(999),
+                color: isActive ? accent : accent.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(4),
               ),
             );
           }),
-        ),
-        const Spacer(),
-        Text(
-          '${_currentPage + 1}/$total',
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w600,
-          ),
         ),
       ],
     );
@@ -664,165 +678,161 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
 
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            slide.accent.withOpacity(isDark ? 0.25 : 0.16),
-            base,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: base,
       ),
       child: Stack(
         children: [
+          // Decorative Blurred Circles (Premium Glassmorphism Look)
           Positioned(
-            top: -60,
-            right: -40,
+            top: -100,
+            right: -100,
             child: _GlowCircle(
-              color: slide.accent.withOpacity(isDark ? 0.25 : 0.18),
-              size: 180,
+              color: slide.accent.withOpacity(isDark ? 0.35 : 0.25),
+              size: 400,
             ),
           ),
           Positioned(
-            bottom: -80,
-            left: -20,
+            bottom: -150,
+            left: -150,
             child: _GlowCircle(
-              color: slide.accent.withOpacity(isDark ? 0.2 : 0.14),
-              size: 220,
+              color: Theme.of(context).colorScheme.primary.withOpacity(isDark ? 0.15 : 0.1),
+              size: 500,
             ),
           ),
           SafeArea(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                20,
-                kToolbarHeight + 28,
-                20,
-                72,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _StaggeredReveal(
+                   _StaggeredReveal(
                     active: isActive,
-                    delay: const Duration(milliseconds: 0),
-                    child: Text(
-                      slide.kicker,
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.3,
+                    delay: const Duration(milliseconds: 100),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: slide.accent.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: slide.accent.withOpacity(0.2)),
+                      ),
+                      child: Text(
+                        slide.kicker.toUpperCase(),
+                        style: TextStyle(
+                          color: slide.accent,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 10,
+                          letterSpacing: 1.5,
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
                   _StaggeredReveal(
                     active: isActive,
-                    delay: const Duration(milliseconds: 90),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        AnimatedScale(
-                          scale: isActive ? 1 : 0.94,
-                          duration: const Duration(milliseconds: 240),
-                          curve: Curves.easeOut,
-                          child: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: slide.accent
-                                  .withOpacity(isDark ? 0.2 : 0.12),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              slide.icon,
-                              color: slide.accent,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            slide.title,
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
-                        ),
-                      ],
+                    delay: const Duration(milliseconds: 200),
+                    child: Text(
+                      slide.title,
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
+                        height: 1.1,
+                        letterSpacing: -1,
+                        color: theme.colorScheme.onSurface,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 48),
                   _StaggeredReveal(
                     active: isActive,
-                    delay: const Duration(milliseconds: 160),
-                    offset: const Offset(0, 0.08),
-                    child: AnimatedScale(
-                      scale: isActive ? 1 : 0.98,
-                      duration: const Duration(milliseconds: 260),
-                      curve: Curves.easeOut,
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color:
-                              theme.cardColor.withOpacity(isDark ? 0.9 : 0.96),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(
-                            color: slide.accent.withOpacity(0.25),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color:
-                                  Colors.black.withOpacity(isDark ? 0.2 : 0.08),
-                              blurRadius: 18,
-                              offset: const Offset(0, 10),
-                            ),
-                          ],
+                    delay: const Duration(milliseconds: 350),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(32),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(32),
+                        border: Border.all(
+                          color: theme.colorScheme.outline.withOpacity(0.1),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              slide.value,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 34,
-                                fontWeight: FontWeight.w700,
-                                color: slide.accent,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 30,
+                            offset: const Offset(0, 15),
+                          )
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(32),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: slide.accent.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Icon(
+                                  slide.icon,
+                                  color: slide.accent,
+                                  size: 24,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              slide.subtitle,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            if (slide.footnote != null) ...[
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 24),
                               Text(
-                                slide.footnote!,
+                                slide.value,
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 48,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -2,
+                                  color: slide.accent,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                slide.subtitle,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  height: 1.5,
+                                  fontWeight: FontWeight.w500,
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
+                              if (slide.footnote != null) ...[
+                                const SizedBox(height: 24),
+                                Row(
+                                  children: [
+                                    Icon(Icons.tips_and_updates_rounded, size: 14, color: slide.accent.withOpacity(0.5)),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        slide.footnote!,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontStyle: FontStyle.italic,
+                                          color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
                       ),
                     ),
                   ),
                   if (showSwipeHint) ...[
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 40),
                     _StaggeredReveal(
                       active: isActive,
-                      delay: const Duration(milliseconds: 320),
-                      offset: const Offset(0, 0.04),
-                      child: const _SwipeHint(),
+                      delay: const Duration(milliseconds: 500),
+                      child: const Center(child: _SwipeHint()),
                     ),
                   ],
                 ],
@@ -837,45 +847,90 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
   Widget _buildEmptyState(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Wrapped 2025'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.auto_awesome_outlined,
-                size: 56,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'No 2025 transactions yet',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: theme.colorScheme.onSurface,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Once you have activity in 2025, your recap will appear here.',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Back to analytics'),
-              ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              theme.colorScheme.primary.withOpacity(0.05),
+              theme.scaffoldBackgroundColor,
             ],
+          ),
+        ),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withOpacity(0.05),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 64,
+                    color: theme.colorScheme.primary.withOpacity(0.5),
+                  ),
+                ),
+                const SizedBox(height: 40),
+                Text(
+                  'NOT QUITE READY',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                   'No 2025 activity yet',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Once you have active transactions in 2025, your personalized year-in-review will be revealed here.',
+                  style: TextStyle(
+                    fontSize: 15,
+                    height: 1.5,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 40),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text('Return to Insights', style: TextStyle(fontWeight: FontWeight.w800)),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -919,7 +974,12 @@ class _GlowCircle extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: color,
+        gradient: RadialGradient(
+          colors: [
+            color,
+            color.withOpacity(0),
+          ],
+        ),
       ),
     );
   }
@@ -936,8 +996,8 @@ class _StaggeredReveal extends StatefulWidget {
     required this.active,
     required this.child,
     this.delay = const Duration(milliseconds: 120),
-    this.duration = const Duration(milliseconds: 420),
-    this.offset = const Offset(0, 0.06),
+    this.duration = const Duration(milliseconds: 600),
+    this.offset = const Offset(0, 0.1),
   });
 
   @override
@@ -994,11 +1054,11 @@ class _StaggeredRevealState extends State<_StaggeredReveal> {
     return AnimatedSlide(
       offset: _visible ? Offset.zero : widget.offset,
       duration: widget.duration,
-      curve: Curves.easeOutCubic,
+      curve: Curves.easeOutQuart,
       child: AnimatedOpacity(
         opacity: _visible ? 1 : 0,
         duration: widget.duration,
-        curve: Curves.easeOutCubic,
+        curve: Curves.easeOutQuart,
         child: widget.child,
       ),
     );
@@ -1023,17 +1083,31 @@ class _SwipeHintState extends State<_SwipeHint>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
-    _offset = Tween<Offset>(
-      begin: Offset.zero,
-      end: const Offset(0.15, 0),
-    ).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-    _opacity = Tween<double>(begin: 0.5, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+    
+    _offset = TweenSequence<Offset>([
+      TweenSequenceItem(
+        tween: Tween<Offset>(begin: Offset.zero, end: const Offset(0.2, 0))
+            .chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 40,
+      ),
+      TweenSequenceItem(
+        tween: ConstantTween<Offset>(const Offset(0.2, 0)),
+        weight: 20,
+      ),
+      TweenSequenceItem(
+        tween: Tween<Offset>(begin: const Offset(0.2, 0), end: Offset.zero)
+            .chain(CurveTween(curve: Curves.easeInCubic)),
+        weight: 40,
+      ),
+    ]).animate(_controller);
+
+    _opacity = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween<double>(begin: 0, end: 1), weight: 30),
+      TweenSequenceItem(tween: ConstantTween<double>(1), weight: 40),
+      TweenSequenceItem(tween: Tween<double>(begin: 1, end: 0), weight: 30),
+    ]).animate(_controller);
   }
 
   @override
@@ -1049,20 +1123,22 @@ class _SwipeHintState extends State<_SwipeHint>
       opacity: _opacity,
       child: SlideTransition(
         position: _offset,
-        child: Row(
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.swipe,
-              size: 18,
-              color: scheme.onSurfaceVariant,
+              Icons.swipe_left_rounded,
+              size: 24,
+              color: scheme.primary,
             ),
-            const SizedBox(width: 6),
+            const SizedBox(height: 8),
             Text(
-              'Swipe for the next highlight',
+              'SWIPE TO DISCOVER',
               style: TextStyle(
-                fontSize: 12,
-                color: scheme.onSurfaceVariant,
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1,
+                color: scheme.onSurfaceVariant.withOpacity(0.6),
               ),
             ),
           ],
