@@ -735,7 +735,7 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
                     child: Text(
                       slide.title,
                       style: TextStyle(
-                        fontSize: 32,
+                        fontSize: 26,
                         fontWeight: FontWeight.w900,
                         height: 1.1,
                         letterSpacing: -1,
@@ -789,7 +789,7 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
                                 Text(
                                   slide.value,
                                   style: TextStyle(
-                                    fontSize: slide.feesByBank != null && slide.feesByBank!.isNotEmpty ? 36 : 48,
+                                    fontSize: slide.feesByBank != null && slide.feesByBank!.isNotEmpty ? 30 : 40,
                                     fontWeight: FontWeight.w900,
                                     letterSpacing: -2,
                                     color: slide.accent,
@@ -806,7 +806,7 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
                                   Text(
                                     slide.subtitle,
                                     style: TextStyle(
-                                      fontSize: 15,
+                                      fontSize: 13,
                                       height: 1.5,
                                       fontWeight: FontWeight.w500,
                                       color: theme.colorScheme.onSurfaceVariant,
