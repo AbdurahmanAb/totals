@@ -12,6 +12,8 @@ class Transaction {
   final String? accountNumber; // Last 4 digits
   final int? categoryId;
   final int? profileId;
+  final double? serviceCharge;
+  final double? vat;
 
   Transaction({
     required this.amount,
@@ -27,6 +29,8 @@ class Transaction {
     this.accountNumber,
     this.categoryId,
     this.profileId,
+    this.serviceCharge,
+    this.vat,
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
@@ -50,6 +54,8 @@ class Transaction {
       accountNumber: json['accountNumber'],
       categoryId: json['categoryId'],
       profileId: json['profileId'] as int?,
+      serviceCharge: toDouble(json['serviceCharge']),
+      vat: toDouble(json['vat']),
     );
   }
 
@@ -67,6 +73,8 @@ class Transaction {
         'accountNumber': accountNumber,
         'categoryId': categoryId,
         if (profileId != null) 'profileId': profileId,
+        if (serviceCharge != null) 'serviceCharge': serviceCharge,
+        if (vat != null) 'vat': vat,
       };
 
   Transaction copyWith({
@@ -83,6 +91,8 @@ class Transaction {
     String? accountNumber,
     int? categoryId,
     int? profileId,
+    double? serviceCharge,
+    double? vat,
     bool clearCategoryId = false, // Flag to explicitly clear categoryId
   }) {
     return Transaction(
@@ -101,6 +111,8 @@ class Transaction {
           ? null 
           : (categoryId ?? this.categoryId),
       profileId: profileId ?? this.profileId,
+      serviceCharge: serviceCharge ?? this.serviceCharge,
+      vat: vat ?? this.vat,
     );
   }
 }

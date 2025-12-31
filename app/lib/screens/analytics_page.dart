@@ -20,6 +20,7 @@ import 'package:totals/screens/insights_page.dart';
 import 'package:totals/widgets/categorize_transaction_sheet.dart';
 import 'package:totals/widgets/category_filter_button.dart';
 import 'package:totals/widgets/category_filter_sheet.dart';
+import 'package:totals/screens/wrapped_2025_page.dart';
 
 class AnalyticsPage extends StatefulWidget {
   const AnalyticsPage({super.key});
@@ -29,6 +30,8 @@ class AnalyticsPage extends StatefulWidget {
 }
 
 class _AnalyticsPageState extends State<AnalyticsPage> {
+  static const int _wrappedYear = 2025;
+
   String? _selectedCard;
   String _selectedPeriod = 'Month';
   int? _selectedBankFilter;
@@ -150,6 +153,112 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       _transactionDateCache[rawTime] = null;
       return null;
     }
+  }
+
+  int _countTransactionsForYear(
+    List<Transaction> transactions,
+    int year,
+  ) {
+    int count = 0;
+    for (final transaction in transactions) {
+      final date = _resolveTransactionDate(transaction);
+      if (date == null) continue;
+      if (date.year == year) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  Widget _buildWrapped2025Card(
+    BuildContext context,
+    int transactionCount,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    final accent = scheme.primary;
+    final subtitle = transactionCount == 0
+        ? 'No $_wrappedYear transactions yet.'
+        : '$transactionCount transactions in $_wrappedYear.';
+
+    return InkWell(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const Wrapped2025Page(),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Ink(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              accent.withOpacity(0.18),
+              Theme.of(context).cardColor,
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: accent.withOpacity(0.2)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.auto_awesome,
+                  color: accent,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Wrapped $_wrappedYear',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: scheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Tap to view your story',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.arrow_forward,
+                color: scheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Map<int, List<AccountSummary>> _groupAccountsByBank(
@@ -582,6 +691,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         final allTransactions = provider.allTransactions;
         final bankSummaries = provider.bankSummaries;
         final accounts = provider.accountSummaries;
+        final wrappedCount =
+            _countTransactionsForYear(allTransactions, _wrappedYear);
 
         final baseDate = _getBaseDate();
         final accountsByBank = _groupAccountsByBank(accounts);
@@ -645,6 +756,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    _buildWrapped2025Card(context, wrappedCount),
                     const SizedBox(height: 24),
                     TimePeriodSelector(
                       selectedPeriod: _selectedPeriod,

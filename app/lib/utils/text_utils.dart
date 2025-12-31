@@ -60,3 +60,16 @@ String formatTime(String input) {
     return "Invalid time input";
   }
 }
+
+String formatTelebirrSenderName(String raw) {
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return trimmed;
+  final hasDigits = RegExp(r'\d').hasMatch(trimmed);
+  if (!hasDigits && !trimmed.contains('(')) return trimmed;
+  final base = trimmed.split('(').first.trim();
+  if (base.isEmpty) return trimmed;
+  final parts = base.split(RegExp(r'\s+'));
+  if (parts.isEmpty) return trimmed;
+  if (parts.length == 1) return parts.first;
+  return '${parts.first} ${parts[1]}';
+}

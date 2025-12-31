@@ -288,6 +288,8 @@ class TransactionsHandler {
       'time': transaction.time,
       'status': transaction.status,
       'currentBalance': transaction.currentBalance,
+      'serviceCharge': transaction.serviceCharge,
+      'vat': transaction.vat,
       'bankId': transaction.bankId,
       'bankName': bank?.shortName ?? 'Unknown',
       'bankFullName': bank?.name ?? 'Unknown Bank',

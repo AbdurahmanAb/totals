@@ -6,6 +6,7 @@ import 'package:totals/providers/transaction_provider.dart';
 import 'package:totals/services/bank_config_service.dart';
 import 'package:totals/utils/category_icons.dart';
 import 'package:totals/utils/category_style.dart';
+import 'package:totals/utils/text_utils.dart';
 
 class TransactionsList extends StatefulWidget {
   final List<Transaction> transactions;
@@ -461,8 +462,27 @@ class TransactionListItem extends StatelessWidget {
     final timeStr =
         dateTime != null ? DateFormat('hh:mm a').format(dateTime) : '';
 
+    final sender = transaction.creditor?.trim();
     final receiver = transaction.receiver?.trim();
-    final hasReceiver = receiver != null && receiver.isNotEmpty;
+    String? counterparty;
+    String? counterpartyPrefix;
+    if (isCredit) {
+      counterparty = (sender != null && sender.isNotEmpty)
+          ? sender
+          : (receiver != null && receiver.isNotEmpty ? receiver : null);
+      counterpartyPrefix = 'from';
+    } else {
+      counterparty = (receiver != null && receiver.isNotEmpty)
+          ? receiver
+          : (sender != null && sender.isNotEmpty ? sender : null);
+      counterpartyPrefix = 'to';
+    }
+    if (isCredit && transaction.bankId == 6 && counterparty != null) {
+      counterparty = formatTelebirrSenderName(counterparty);
+    }
+    final counterpartyLabel = counterparty == null
+        ? null
+        : '$counterpartyPrefix $counterparty';
 
     final category = provider?.getCategoryById(transaction.categoryId);
     final categoryColor = category == null
@@ -514,11 +534,11 @@ class TransactionListItem extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        if (hasReceiver)
+                        if (counterpartyLabel != null)
                           const SizedBox(height: 4),
-                        if (hasReceiver)
+                        if (counterpartyLabel != null)
                           Text(
-                            'to $receiver',
+                            counterpartyLabel,
                             style: TextStyle(
                               fontSize: 12,
                               color: Theme.of(context)

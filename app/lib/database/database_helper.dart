@@ -21,7 +21,7 @@ class DatabaseHelper {
 
     final db = await openDatabase(
       path,
-      version: 15,
+      version: 16,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -33,6 +33,7 @@ class DatabaseHelper {
     await _assignBuiltInCategoryKeys(db);
     await _seedBuiltInCategories(db);
     await _ensureProfileSchema(db);
+    await _ensureTransactionFeesSchema(db);
 
     return db;
   }
@@ -71,6 +72,8 @@ class DatabaseHelper {
         time TEXT,
         status TEXT,
         currentBalance TEXT,
+        serviceCharge REAL,
+        vat REAL,
         bankId INTEGER,
         type TEXT,
         transactionLink TEXT,
@@ -251,6 +254,21 @@ class DatabaseHelper {
         print("debug: Added receiver column to transactions table");
       } catch (e) {
         print("debug: Error adding receiver column (might already exist): $e");
+      }
+    }
+
+    if (oldVersion < 16) {
+      try {
+        await db
+            .execute('ALTER TABLE transactions ADD COLUMN serviceCharge REAL');
+      } catch (e) {
+        print(
+            "debug: Error adding serviceCharge column (might already exist): $e");
+      }
+      try {
+        await db.execute('ALTER TABLE transactions ADD COLUMN vat REAL');
+      } catch (e) {
+        print("debug: Error adding vat column (might already exist): $e");
       }
     }
 
@@ -863,6 +881,33 @@ class DatabaseHelper {
         {'profileId': activeProfileId},
         where: 'profileId IS NULL',
       );
+    }
+  }
+
+  Future<void> _ensureTransactionFeesSchema(Database db) async {
+    final tables = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='transactions'",
+    );
+    if (tables.isEmpty) return;
+
+    final cols = await db.rawQuery('PRAGMA table_info(transactions)');
+    final names = cols
+        .map((r) => (r['name'] as String?)?.trim())
+        .whereType<String>()
+        .toSet();
+
+    Future<void> addColumn(String ddl) async {
+      try {
+        await db.execute(ddl);
+      } catch (_) {}
+    }
+
+    if (!names.contains('serviceCharge')) {
+      await addColumn(
+          'ALTER TABLE transactions ADD COLUMN serviceCharge REAL');
+    }
+    if (!names.contains('vat')) {
+      await addColumn('ALTER TABLE transactions ADD COLUMN vat REAL');
     }
   }
 

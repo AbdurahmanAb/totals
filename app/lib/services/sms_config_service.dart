@@ -390,7 +390,7 @@ class SmsConfigService {
       bankId: 6,
       senderId: "telebirr",
       regex:
-          r"received\s+ETB\s?(?<amount>[\d,.]+)\s+by\s+transaction\s+number\s*(?<reference>[A-Z0-9]+).*?from\s+.*?\s+to\s+your\s+telebirr\s+account.*?balance\s+is\s+ETB\s?(?<balance>[\d,.]+)",
+          r"received\s+ETB\s?(?<amount>[\d,.]+)\s+by\s+transaction\s+number\s*(?<reference>[A-Z0-9]+).*?from\s+(?<sender>.+?)\s+to\s+your\s+telebirr\s+account.*?balance\s+is\s+ETB\s?(?<balance>[\d,.]+)",
       type: "CREDIT",
       description: "Telebirr Received from Bank",
       refRequired: true,

@@ -27,7 +27,8 @@ class PatternParser {
           final Map<String, dynamic> extracted = {};
 
           // Extract known named groups
-          // We support: amount, balance, account, reference, creditor, time
+          // We support: amount, balance, account, reference, creditor, receiver,
+          // sender/source (for incoming transfers), time
 
           extracted['type'] = pattern.type;
           extracted['bankId'] = pattern.bankId; // Default bank ID from pattern
@@ -96,6 +97,33 @@ class PatternParser {
           if (match.groupNames.contains("receiver")) {
             extracted['receiver'] = match.namedGroup('receiver');
           }
+          _assignOptionalAmount(
+            extracted,
+            'serviceCharge',
+            match,
+            const ['serviceCharge', 'ServiceCharge', 'servicecharge', 'service_charge'],
+          );
+          _assignOptionalAmount(
+            extracted,
+            'vat',
+            match,
+            const ['vat', 'VAT'],
+          );
+          String? counterparty = _firstNamedGroup(match, const [
+            'sender',
+            'source',
+            'agent',
+            'payer',
+            'from',
+          ]);
+          final rawType = (extracted['type'] ?? pattern.type).toString();
+          final normalized = rawType.toUpperCase();
+          if (normalized.contains('CREDIT')) {
+            counterparty ??= _fallbackCounterparty(cleanBody);
+            if (counterparty != null && counterparty.trim().isNotEmpty) {
+              extracted['creditor'] ??= counterparty.trim();
+            }
+          }
           if (match.groupNames.contains('time')) {
             // Date parsing is complex, for now store raw string or try basic parse
             // Ideally the regex extracts ISO-like or we have a date parser helper
@@ -158,6 +186,64 @@ class PatternParser {
 
     print("debug: \n✗ No matching pattern found for message.");
     return null; // No match found
+  }
+
+  static void _assignOptionalAmount(
+    Map<String, dynamic> target,
+    String key,
+    RegExpMatch match,
+    List<String> groupNames,
+  ) {
+    for (final name in groupNames) {
+      if (!match.groupNames.contains(name)) continue;
+      final cleaned = _cleanNumber(match.namedGroup(name));
+      final value = cleaned == null ? null : double.tryParse(cleaned);
+      if (value != null) {
+        target[key] = value;
+      }
+      return;
+    }
+  }
+
+  static String? _firstNamedGroup(
+    RegExpMatch match,
+    List<String> groupNames,
+  ) {
+    for (final name in groupNames) {
+      if (!match.groupNames.contains(name)) continue;
+      final value = match.namedGroup(name);
+      if (value != null && value.trim().isNotEmpty) return value;
+    }
+    return null;
+  }
+
+  static String? _fallbackCounterparty(String body) {
+    final patterns = [
+      RegExp(
+        r'from\s+(.+?)\s+(?:to|on|at|ref|reference|transaction|balance)',
+        caseSensitive: false,
+      ),
+      RegExp(
+        r'by\s+(.+?)\s+(?:on|through|ref|reference|transaction|balance)',
+        caseSensitive: false,
+      ),
+      RegExp(
+        r'with\s+agent\s+(.+?)\s+(?:on|at|ref|reference|transaction|balance)',
+        caseSensitive: false,
+      ),
+    ];
+
+    for (final pattern in patterns) {
+      final match = pattern.firstMatch(body);
+      if (match == null) continue;
+      final value = match.group(1)?.trim();
+      if (value == null || value.isEmpty) continue;
+      if (value.toLowerCase().contains('your account')) continue;
+      if (value.toLowerCase().contains('your telebirr')) continue;
+      if (value.toLowerCase().contains('your mpesa')) continue;
+      return value;
+    }
+    return null;
   }
 
   static String? _cleanNumber(String? input) {
