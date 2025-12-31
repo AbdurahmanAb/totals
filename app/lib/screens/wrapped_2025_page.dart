@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:totals/models/bank.dart';
 import 'package:totals/models/transaction.dart';
 import 'package:totals/providers/transaction_provider.dart';
+import 'package:totals/screens/stats_recap_page.dart';
 import 'package:totals/services/bank_config_service.dart';
 import 'package:totals/utils/text_utils.dart';
 
@@ -554,6 +555,15 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
 
     final summary = _buildSummary(transactions, provider, banksById);
     final slides = _buildSlides(context, summary);
+    final recapData = StatsRecapData.from(
+      transactions: transactions,
+      banks: _banks,
+      year: _wrappedYear,
+    );
+    final totalPages = slides.length + 1;
+    final indicatorAccent = _currentPage >= slides.length
+        ? Theme.of(context).colorScheme.primary
+        : slides[_currentPage].accent;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -567,13 +577,16 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
           PageView.builder(
             controller: _pageController,
             physics: const BouncingScrollPhysics(),
-            itemCount: slides.length,
+            itemCount: totalPages,
             onPageChanged: (index) {
               setState(() {
                 _currentPage = index;
               });
             },
             itemBuilder: (context, index) {
+              if (index == slides.length) {
+                return StatsRecapContent(data: recapData);
+              }
               return _buildSlide(
                 context,
                 slides[index],
@@ -592,8 +605,8 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
                 child: _buildPageIndicator(
                   context,
-                  slides.length,
-                  slides[_currentPage].accent,
+                  totalPages,
+                  indicatorAccent,
                 ),
               ),
             ),
