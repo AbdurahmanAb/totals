@@ -363,6 +363,14 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
     return 'ETB ${formatNumberAbbreviated(value)}';
   }
 
+  String _getFirstTwoWords(String text) {
+    final words = text.trim().split(RegExp(r'\s+'));
+    if (words.length <= 2) {
+      return text;
+    }
+    return words.take(2).join(' ');
+  }
+
   List<_WrappedSlideData> _buildSlides(
     BuildContext context,
     _WrappedSummary summary,
@@ -490,7 +498,7 @@ class _Wrapped2025PageState extends State<Wrapped2025Page> {
         title: 'You received the most from',
         value: summary.topReceivedFrom.amount == 0
             ? 'No senders yet'
-            : summary.topReceivedFrom.label,
+            : _getFirstTwoWords(summary.topReceivedFrom.label),
         subtitle: summary.topReceivedFrom.amount == 0
             ? 'No incoming transfers yet.'
             : _formatCurrency(summary.topReceivedFrom.amount),
