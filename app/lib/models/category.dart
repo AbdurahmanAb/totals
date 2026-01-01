@@ -39,6 +39,40 @@ class Category {
     );
   }
 
+  factory Category.fromJson(Map<String, dynamic> json) {
+    bool toBool(dynamic value, {bool defaultValue = false}) {
+      if (value is bool) return value;
+      if (value is num) return value != 0;
+      if (value is String) {
+        final normalized = value.trim().toLowerCase();
+        if (normalized == 'true' || normalized == '1') return true;
+        if (normalized == 'false' || normalized == '0') return false;
+      }
+      return defaultValue;
+    }
+
+    int? toInt(dynamic value) {
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      if (value is String) return int.tryParse(value.trim());
+      return null;
+    }
+
+    final rawFlow = (json['flow'] as String?)?.trim().toLowerCase();
+    return Category(
+      id: toInt(json['id']),
+      name: (json['name'] as String?) ?? '',
+      essential: toBool(json['essential']),
+      uncategorized: toBool(json['uncategorized']),
+      iconKey: json['iconKey'] as String?,
+      description: json['description'] as String?,
+      flow: rawFlow == 'income' ? 'income' : 'expense',
+      recurring: toBool(json['recurring']),
+      builtIn: toBool(json['builtIn']),
+      builtInKey: json['builtInKey'] as String?,
+    );
+  }
+
   Map<String, dynamic> toDb() {
     return {
       'id': id,
@@ -53,6 +87,19 @@ class Category {
       'builtInKey': builtInKey,
     };
   }
+
+  Map<String, dynamic> toJson() => {
+        if (id != null) 'id': id,
+        'name': name,
+        'essential': essential,
+        'uncategorized': uncategorized,
+        'iconKey': iconKey,
+        'description': description,
+        'flow': flow,
+        'recurring': recurring,
+        'builtIn': builtIn,
+        'builtInKey': builtInKey,
+      };
 
   Category copyWith({
     int? id,
