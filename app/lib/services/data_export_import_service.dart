@@ -2,39 +2,65 @@ import 'dart:convert';
 import 'package:sqflite/sqflite.dart' hide Transaction;
 import 'package:totals/database/database_helper.dart';
 import 'package:totals/models/account.dart';
+import 'package:totals/models/bank.dart';
+import 'package:totals/models/budget.dart';
 import 'package:totals/models/category.dart';
 import 'package:totals/models/transaction.dart';
 import 'package:totals/models/failed_parse.dart';
 import 'package:totals/models/sms_pattern.dart';
+import 'package:totals/models/user_account.dart';
 import 'package:totals/repositories/account_repository.dart';
+import 'package:totals/repositories/budget_repository.dart';
 import 'package:totals/repositories/category_repository.dart';
 import 'package:totals/repositories/transaction_repository.dart';
 import 'package:totals/repositories/failed_parse_repository.dart';
+import 'package:totals/repositories/user_account_repository.dart';
+import 'package:totals/services/receiver_category_service.dart';
 import 'package:totals/services/sms_config_service.dart';
 
 class DataExportImportService {
   final AccountRepository _accountRepo = AccountRepository();
+  final BudgetRepository _budgetRepo = BudgetRepository();
   final CategoryRepository _categoryRepo = CategoryRepository();
   final TransactionRepository _transactionRepo = TransactionRepository();
   final FailedParseRepository _failedParseRepo = FailedParseRepository();
+  final UserAccountRepository _userAccountRepo = UserAccountRepository();
+  final ReceiverCategoryService _receiverCategoryService =
+      ReceiverCategoryService.instance;
   final SmsConfigService _smsConfigService = SmsConfigService();
 
   /// Export all data to JSON
   Future<String> exportAllData() async {
     try {
       final accounts = await _accountRepo.getAccounts();
+      final banks = await _getBanksFromDb();
+      final budgets = await _budgetRepo.getAllBudgets();
       final categories = await _categoryRepo.getCategories();
+      final userAccounts = await _userAccountRepo.getUserAccounts();
       final transactions = await _transactionRepo.getTransactions();
       final failedParses = await _failedParseRepo.getAll();
+      final receiverCategoryMappings =
+          await _receiverCategoryService.getAllMappings();
       final smsPatterns = await _smsConfigService.getPatterns();
 
       final exportData = {
         'version': '1.0',
         'exportDate': DateTime.now().toIso8601String(),
         'accounts': accounts.map((a) => a.toJson()).toList(),
+        'banks': banks.map((b) => b.toJson()).toList(),
+        'budgets': budgets.map((b) => b.toJson()).toList(),
         'categories': categories.map((c) => c.toJson()).toList(),
+        'userAccounts': userAccounts.map((a) => a.toJson()).toList(),
         'transactions': transactions.map((t) => t.toJson()).toList(),
         'failedParses': failedParses.map((f) => f.toJson()).toList(),
+        'receiverCategoryMappings': receiverCategoryMappings.map((mapping) {
+          return {
+            'accountNumber': mapping['accountNumber'],
+            'categoryId': mapping['categoryId'],
+            'accountType': mapping['accountType'],
+            'createdAt': mapping['createdAt'],
+          };
+        }).toList(),
         'smsPatterns': smsPatterns.map((p) => p.toJson()).toList(),
       };
 
@@ -63,6 +89,40 @@ class DataExportImportService {
       }
 
       final Map<int, int> categoryIdMap = {};
+
+      // Import banks (replace - configuration)
+      if (data['banks'] != null) {
+        final banksList = (data['banks'] as List)
+            .map((json) => Bank.fromJson(json as Map<String, dynamic>))
+            .toList();
+
+        if (banksList.isNotEmpty) {
+          await db.delete('banks');
+          final batch = db.batch();
+          for (final bank in banksList) {
+            batch.insert(
+              'banks',
+              {
+                'id': bank.id,
+                'name': bank.name,
+                'shortName': bank.shortName,
+                'codes': jsonEncode(bank.codes),
+                'image': bank.image,
+                'maskPattern': bank.maskPattern,
+                'uniformMasking': bank.uniformMasking == null
+                    ? null
+                    : (bank.uniformMasking! ? 1 : 0),
+                'simBased':
+                    bank.simBased == null ? null : (bank.simBased! ? 1 : 0),
+                'colors':
+                    bank.colors != null ? jsonEncode(bank.colors) : null,
+              },
+              conflictAlgorithm: ConflictAlgorithm.replace,
+            );
+          }
+          await batch.commit(noResult: true);
+        }
+      }
 
       // Import categories (append, skip duplicates)
       if (data['categories'] != null) {
@@ -174,6 +234,27 @@ class DataExportImportService {
         await _accountRepo.saveAllAccounts(accountsList);
       }
 
+      // Import saved user accounts (append, skip duplicates based on account+bank)
+      if (data['userAccounts'] != null) {
+        final userAccountsList = (data['userAccounts'] as List)
+            .map((json) => UserAccount.fromJson(json as Map<String, dynamic>))
+            .toList();
+        final batch = db.batch();
+        for (final account in userAccountsList) {
+          batch.insert(
+            'user_accounts',
+            {
+              'accountNumber': account.accountNumber,
+              'bankId': account.bankId,
+              'accountHolderName': account.accountHolderName,
+              'createdAt': account.createdAt,
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+        await batch.commit(noResult: true);
+      }
+
       // Import transactions (append, skip duplicates based on reference)
       // Use repository to ensure they're associated with active profile
       if (data['transactions'] != null) {
@@ -191,6 +272,73 @@ class DataExportImportService {
             .toList();
         // Use saveAllTransactions which will auto-associate with active profile
         await _transactionRepo.saveAllTransactions(transactionsList);
+      }
+
+      // Import budgets (append, skip duplicates)
+      if (data['budgets'] != null) {
+        String budgetKey(Budget budget) {
+          final name = budget.name.trim().toLowerCase();
+          final type = budget.type.trim().toLowerCase();
+          final category = budget.categoryId?.toString() ?? '';
+          final start = budget.startDate.toIso8601String();
+          final end = budget.endDate?.toIso8601String() ?? '';
+          final amount = budget.amount.toStringAsFixed(2);
+          final threshold = budget.alertThreshold.toStringAsFixed(2);
+          final rollover = budget.rollover ? '1' : '0';
+          final isActive = budget.isActive ? '1' : '0';
+          final timeFrame = (budget.timeFrame ?? '').trim().toLowerCase();
+          return '$name|$type|$amount|$category|$start|$end|$rollover|$threshold|$isActive|$timeFrame';
+        }
+
+        final existingBudgets = await _budgetRepo.getAllBudgets();
+        final existingKeys = existingBudgets.map(budgetKey).toSet();
+
+        final budgetsList = (data['budgets'] as List)
+            .map((json) => Budget.fromJson(json as Map<String, dynamic>))
+            .map((budget) {
+              final categoryId = budget.categoryId;
+              if (categoryId == null) return budget;
+              final mappedId = categoryIdMap[categoryId];
+              if (mappedId == null || mappedId == categoryId) {
+                return budget;
+              }
+              return budget.copyWith(categoryId: mappedId);
+            })
+            .toList();
+
+        for (final budget in budgetsList) {
+          final key = budgetKey(budget);
+          if (existingKeys.contains(key)) continue;
+          final dataToSave = budget.toDb();
+          dataToSave.remove('id');
+          await db.insert(
+            'budgets',
+            dataToSave,
+            conflictAlgorithm: ConflictAlgorithm.ignore,
+          );
+          existingKeys.add(key);
+        }
+      }
+
+      // Import receiver category mappings (append, replace duplicates)
+      if (data['receiverCategoryMappings'] != null) {
+        final batch = db.batch();
+        for (final json in data['receiverCategoryMappings'] as List) {
+          final mapping = json as Map<String, dynamic>;
+          final categoryId = mapping['categoryId'] as int?;
+          final mappedId = categoryId == null ? null : categoryIdMap[categoryId];
+          batch.insert(
+            'receiver_category_mappings',
+            {
+              'accountNumber': mapping['accountNumber'],
+              'categoryId': mappedId ?? categoryId,
+              'accountType': mapping['accountType'],
+              'createdAt': mapping['createdAt'],
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+        await batch.commit(noResult: true);
       }
 
       // Import failed parses (append)
@@ -218,6 +366,36 @@ class DataExportImportService {
     } catch (e) {
       throw Exception('Failed to import data: $e');
     }
+  }
+
+  Future<List<Bank>> _getBanksFromDb() async {
+    final db = await DatabaseHelper.instance.database;
+    final rows = await db.query('banks');
+
+    return rows.map((row) {
+      final codesRaw = row['codes'];
+      final colorsRaw = row['colors'];
+      final codes = codesRaw is String && codesRaw.isNotEmpty
+          ? List<String>.from(jsonDecode(codesRaw) as List)
+          : <String>[];
+      final colors = colorsRaw is String && colorsRaw.isNotEmpty
+          ? List<String>.from(jsonDecode(colorsRaw) as List)
+          : null;
+
+      return Bank.fromJson({
+        'id': row['id'],
+        'name': row['name'],
+        'shortName': row['shortName'],
+        'codes': codes,
+        'image': row['image'],
+        'maskPattern': row['maskPattern'],
+        'uniformMasking': row['uniformMasking'] == null
+            ? null
+            : (row['uniformMasking'] == 1),
+        'simBased': row['simBased'] == null ? null : (row['simBased'] == 1),
+        'colors': colors,
+      });
+    }).toList();
   }
 }
 

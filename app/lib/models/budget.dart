@@ -55,6 +55,84 @@ class Budget {
     );
   }
 
+  factory Budget.fromJson(Map<String, dynamic> json) {
+    bool toBool(dynamic value, {bool defaultValue = false}) {
+      if (value is bool) return value;
+      if (value is num) return value != 0;
+      if (value is String) {
+        final normalized = value.trim().toLowerCase();
+        if (normalized == 'true' || normalized == '1') return true;
+        if (normalized == 'false' || normalized == '0') return false;
+      }
+      return defaultValue;
+    }
+
+    double toDouble(dynamic value, {double defaultValue = 0.0}) {
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value.trim()) ?? defaultValue;
+      return defaultValue;
+    }
+
+    int? toInt(dynamic value) {
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      if (value is String) return int.tryParse(value.trim());
+      return null;
+    }
+
+    DateTime? parseDate(dynamic value) {
+      if (value is DateTime) return value;
+      if (value is String && value.trim().isNotEmpty) {
+        try {
+          return DateTime.parse(value);
+        } catch (_) {
+          return null;
+        }
+      }
+      if (value is int) {
+        return DateTime.fromMillisecondsSinceEpoch(value);
+      }
+      return null;
+    }
+
+    return Budget(
+      id: toInt(json['id']),
+      name: (json['name'] as String?) ?? '',
+      type: (json['type'] as String?) ?? 'monthly',
+      amount: toDouble(json['amount']),
+      categoryId: toInt(json['categoryId']),
+      startDate: parseDate(json['startDate']) ?? DateTime.now(),
+      endDate: parseDate(json['endDate']),
+      rollover: toBool(json['rollover']),
+      alertThreshold: toDouble(
+        json['alertThreshold'],
+        defaultValue: 80.0,
+      ),
+      isActive: toBool(json['isActive'], defaultValue: true),
+      createdAt: parseDate(json['createdAt']) ?? DateTime.now(),
+      updatedAt: parseDate(json['updatedAt']),
+      timeFrame: json['timeFrame'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (id != null) 'id': id,
+      'name': name,
+      'type': type,
+      'amount': amount,
+      'categoryId': categoryId,
+      'startDate': startDate.toIso8601String(),
+      'endDate': endDate?.toIso8601String(),
+      'rollover': rollover,
+      'alertThreshold': alertThreshold,
+      'isActive': isActive,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
+      'timeFrame': timeFrame,
+    };
+  }
+
   Map<String, dynamic> toDb() {
     return {
       'id': id,
