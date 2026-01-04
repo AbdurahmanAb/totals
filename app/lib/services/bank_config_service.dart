@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:sqflite/sqflite.dart';
@@ -6,70 +7,26 @@ import 'package:totals/database/database_helper.dart';
 import 'package:totals/models/bank.dart';
 
 class BankConfigService {
-  static final List<Bank> _defaultBanks = [
-    Bank(
-      id: 1,
-      name: "Commercial Bank Of Ethiopia",
-      shortName: "CBE",
-      codes: ["CBE"],
-      image: "assets/images/cbe.png",
-      maskPattern: 4,
-      uniformMasking: true,
-    ),
-    Bank(
-      id: 2,
-      name: "Awash Bank",
-      shortName: "Awash",
-      codes: ["Awash", "Awash Bank", "AwashBank"],
-      image: "assets/images/awash.png",
-      maskPattern: 4,
-      uniformMasking: true,
-    ),
-    Bank(
-      id: 3,
-      name: "Bank Of Abyssinia",
-      shortName: "BOA",
-      codes: ["BOA"],
-      image: "assets/images/boa.png",
-      maskPattern: 4,
-      uniformMasking: true,
-    ),
-    Bank(
-      id: 4,
-      name: "Dashen Bank",
-      shortName: "Dashen",
-      codes: ["Dashen", "DashenBank"],
-      image: "assets/images/dashen.png",
-      maskPattern: 4,
-      uniformMasking: true,
-    ),
-    Bank(
-      id: 5,
-      name: "Zemen Bank",
-      shortName: "Zemen",
-      codes: ["Zemen"],
-      image: "assets/images/zemen.png",
-      maskPattern: 4,
-      uniformMasking: true,
-    ),
-    Bank(
-      id: 6,
-      name: "Telebirr",
-      shortName: "Telebirr",
-      codes: ["telebirr", "Telebirr", "127"],
-      image: "assets/images/telebirr.png",
-      uniformMasking: false,
-    ),
-    Bank(
-      id: 7,
-      name: "Nib Bank",
-      shortName: "NIB",
-      codes: ["NIB"],
-      image: "assets/images/nib.png",
-      maskPattern: 4,
-      uniformMasking: true,
-    ),
-  ];
+  static const String _banksAssetPath = 'assets/banks.json';
+  List<Bank>? _assetBanksCache;
+
+  Future<List<Bank>> _loadAssetBanks() async {
+    if (_assetBanksCache != null) {
+      return _assetBanksCache!;
+    }
+
+    try {
+      final body = await rootBundle.loadString(_banksAssetPath);
+      final banks = _parseBanksFromJson(body);
+      _assetBanksCache = banks;
+      print("debug: Loaded ${banks.length} banks from assets");
+      return banks;
+    } catch (e) {
+      print("debug: Error loading asset banks: $e");
+      return [];
+    }
+  }
+
 
   Future<List<Bank>> getBanks() async {
     final db = await DatabaseHelper.instance.database;
@@ -119,10 +76,13 @@ class BankConfigService {
       print("debug: No internet connection, cannot fetch remote banks");
     }
 
-    // Fallback to default list if no banks found
-    print("debug: No banks available, using defaults");
-    await saveBanks(_defaultBanks);
-    return _defaultBanks;
+    // Fallback to asset list if no banks found
+    print("debug: No banks available, using assets");
+    final assetBanks = await _loadAssetBanks();
+    if (assetBanks.isNotEmpty) {
+      await saveBanks(assetBanks);
+    }
+    return assetBanks;
   }
 
   Future<bool> _hasInternetConnection() async {
@@ -147,6 +107,34 @@ class BankConfigService {
     }
   }
 
+  List<Bank> _parseBanksFromJson(String body) {
+    String normalizedBody = body.trim();
+    if (normalizedBody.startsWith('export') ||
+        normalizedBody.startsWith('const') ||
+        normalizedBody.startsWith('var') ||
+        normalizedBody.startsWith('let')) {
+      final jsonMatch =
+          RegExp(r'(\[[\s\S]*\])|(\{[\s\S]*\})').firstMatch(normalizedBody);
+      if (jsonMatch != null) {
+        normalizedBody = jsonMatch.group(0)!;
+      }
+    }
+
+    final dynamic jsonData = jsonDecode(normalizedBody);
+    if (jsonData is List) {
+      return jsonData
+          .map((item) => Bank.fromJson(item as Map<String, dynamic>))
+          .toList();
+    }
+    if (jsonData is Map && jsonData.containsKey('banks')) {
+      final banksList = jsonData['banks'] as List;
+      return banksList
+          .map((item) => Bank.fromJson(item as Map<String, dynamic>))
+          .toList();
+    }
+    return [];
+  }
+
   Future<List<Bank>> _fetchRemoteBanks() async {
     const String url = "https://sms-parsing-visualizer.vercel.app/banks.json";
 
@@ -156,39 +144,7 @@ class BankConfigService {
           );
 
       if (response.statusCode == 200) {
-        String body = response.body;
-
-        // Handle JavaScript file that might export JSON
-        // Remove any JavaScript wrapper if present
-        body = body.trim();
-        if (body.startsWith('export') ||
-            body.startsWith('const') ||
-            body.startsWith('var') ||
-            body.startsWith('let')) {
-          // Extract JSON from JS file
-          final jsonMatch =
-              RegExp(r'(\[[\s\S]*\])|(\{[\s\S]*\})').firstMatch(body);
-          if (jsonMatch != null) {
-            body = jsonMatch.group(0)!;
-          }
-        }
-
-        // Parse JSON
-        final dynamic jsonData = jsonDecode(body);
-        List<Bank> banks = [];
-
-        if (jsonData is List) {
-          banks = jsonData
-              .map((item) => Bank.fromJson(item as Map<String, dynamic>))
-              .toList();
-        } else if (jsonData is Map && jsonData.containsKey('banks')) {
-          // Handle case where JSON has a 'banks' key
-          final banksList = jsonData['banks'] as List;
-          banks = banksList
-              .map((item) => Bank.fromJson(item as Map<String, dynamic>))
-              .toList();
-        }
-
+        final banks = _parseBanksFromJson(response.body);
         print("debug: Fetched ${banks.length} banks from remote");
         return banks;
       } else {
@@ -269,7 +225,11 @@ class BankConfigService {
     // No banks stored, need to fetch
     final hasInternet = await _hasInternetConnection();
     if (!hasInternet) {
-      return true; // Internet needed but not available
+      final assetBanks = await _loadAssetBanks();
+      if (assetBanks.isNotEmpty) {
+        await saveBanks(assetBanks);
+      }
+      return false;
     }
 
     // Fetch and save banks
@@ -279,10 +239,18 @@ class BankConfigService {
         await saveBanks(banks);
         return false; // Success
       } else {
+        final assetBanks = await _loadAssetBanks();
+        if (assetBanks.isNotEmpty) {
+          await saveBanks(assetBanks);
+        }
         return false;
       }
     } catch (e) {
       print("debug: Error initializing banks: $e");
+      final assetBanks = await _loadAssetBanks();
+      if (assetBanks.isNotEmpty) {
+        await saveBanks(assetBanks);
+      }
       return false;
     }
   }
