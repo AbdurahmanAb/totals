@@ -98,6 +98,8 @@ flutter:
   assets:
     - shorebird.yaml
     - assets/images/
+    - assets/banks.json
+    - assets/sms_patterns.json
     - assets/webapp/
     - assets/webapp/assets/
   uses-material-design: true
