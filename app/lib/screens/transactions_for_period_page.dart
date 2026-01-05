@@ -11,6 +11,7 @@ class TransactionsForPeriodPage extends StatefulWidget {
   final TransactionProvider provider;
   final String title;
   final String? subtitle;
+  final bool dimSelfTransfers;
 
   const TransactionsForPeriodPage({
     super.key,
@@ -18,6 +19,7 @@ class TransactionsForPeriodPage extends StatefulWidget {
     required this.provider,
     required this.title,
     this.subtitle,
+    this.dimSelfTransfers = false,
   });
 
   @override
@@ -303,6 +305,7 @@ class _TransactionsForPeriodPageState extends State<TransactionsForPeriodPage> {
                       transactions: filteredTransactions,
                       sortBy: _sortBy,
                       provider: widget.provider,
+                      dimSelfTransfers: widget.dimSelfTransfers,
                       includeBottomPadding: false,
                       selectionMode: _isSelectionMode,
                       selectedReferences: _selectedReferences,
