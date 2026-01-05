@@ -172,6 +172,9 @@ class _TodayTransactionItem extends StatelessWidget {
     final categoryColor = category == null
         ? Theme.of(context).colorScheme.onSurfaceVariant
         : categoryTypeColor(category, context);
+    final selfTransferLabel = provider.getSelfTransferLabel(transaction);
+    final isSelfTransfer = provider.isSelfTransfer(transaction);
+    final selfTransferColor = Theme.of(context).colorScheme.secondary;
     final selectionColor = Theme.of(context).colorScheme.primary;
     final highlightColor = Theme.of(context).colorScheme.primary;
 
@@ -257,11 +260,18 @@ class _TodayTransactionItem extends StatelessWidget {
                           spacing: 8,
                           runSpacing: 6,
                           children: [
-                            _CategoryChip(
-                              label: category?.name ?? 'Uncategorized',
-                              icon: iconForCategoryKey(category?.iconKey),
-                              color: categoryColor,
-                            ),
+                            if (!isSelfTransfer)
+                              _CategoryChip(
+                                label: category?.name ?? 'Uncategorized',
+                                icon: iconForCategoryKey(category?.iconKey),
+                                color: categoryColor,
+                              ),
+                            if (selfTransferLabel != null)
+                              _CategoryChip(
+                                label: selfTransferLabel,
+                                icon: Icons.sync_alt_rounded,
+                                color: selfTransferColor,
+                              ),
                           ],
                         ),
                       ],

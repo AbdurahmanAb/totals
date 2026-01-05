@@ -826,6 +826,7 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
                           selectionMode: _isSelectionMode,
                           isSelected: _selectedReferences
                               .contains(transaction.reference),
+                          dimSelfTransfers: false,
                           onLongPress: () {
                             _toggleSelection(transaction);
                           },

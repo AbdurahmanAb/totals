@@ -19,6 +19,7 @@ class TransactionsList extends StatefulWidget {
   final TransactionProvider? provider;
   final bool selectionMode;
   final Set<String> selectedReferences;
+  final bool dimSelfTransfers;
 
   const TransactionsList({
     super.key,
@@ -32,6 +33,7 @@ class TransactionsList extends StatefulWidget {
     this.provider,
     this.selectionMode = false,
     this.selectedReferences = const <String>{},
+    this.dimSelfTransfers = false,
   });
 
   @override
@@ -236,6 +238,7 @@ class _TransactionsListState extends State<TransactionsList> {
               selectionMode: selectionMode,
               isSelected:
                   widget.selectedReferences.contains(transaction.reference),
+              dimSelfTransfers: widget.dimSelfTransfers,
               onTap: widget.onTransactionTap != null
                   ? () => widget.onTransactionTap!(transaction)
                   : null,
@@ -432,6 +435,7 @@ class TransactionListItem extends StatelessWidget {
   final bool isSelected;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
+  final bool dimSelfTransfers;
 
   const TransactionListItem({
     required this.transaction,
@@ -442,6 +446,7 @@ class TransactionListItem extends StatelessWidget {
     required this.isSelected,
     required this.onTap,
     required this.onLongPress,
+    required this.dimSelfTransfers,
   });
 
   @override
@@ -488,134 +493,155 @@ class TransactionListItem extends StatelessWidget {
     final categoryColor = category == null
         ? Theme.of(context).colorScheme.onSurfaceVariant
         : categoryTypeColor(category, context);
+    final selfTransferLabel = provider?.getSelfTransferLabel(transaction);
+    final selfTransferColor = Theme.of(context).colorScheme.secondary;
     final selectionColor = Theme.of(context).colorScheme.primary;
+    final isSelfTransfer =
+        provider != null && provider!.isSelfTransfer(transaction);
+    final isDimmed = dimSelfTransfers && isSelfTransfer;
 
     return Material(
       color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        onLongPress: onLongPress,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? selectionColor.withOpacity(0.08)
-                : Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
+      child: Opacity(
+        opacity: isDimmed ? 0.55 : 1,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          onLongPress: onLongPress,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
               color: isSelected
-                  ? selectionColor.withOpacity(0.4)
+                  ? selectionColor.withOpacity(0.08)
                   : Theme.of(context)
                       .colorScheme
-                      .onSurfaceVariant
-                      .withOpacity(0.1),
-              width: 1,
+                      .surfaceVariant
+                      .withOpacity(0.3),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isSelected
+                    ? selectionColor.withOpacity(0.4)
+                    : Theme.of(context)
+                        .colorScheme
+                        .onSurfaceVariant
+                        .withOpacity(0.1),
+                width: 1,
+              ),
             ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          bankLabel,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (counterpartyLabel != null)
-                          const SizedBox(height: 4),
-                        if (counterpartyLabel != null)
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            counterpartyLabel,
+                            bankLabel,
                             style: TextStyle(
-                              fontSize: 12,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                        if (provider != null) ...[
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 6,
-                            children: [
-                              _CategoryChip(
-                                label: category?.name ?? 'Uncategorized',
-                                icon: iconForCategoryKey(category?.iconKey),
-                                color: categoryColor,
+                          if (counterpartyLabel != null)
+                            const SizedBox(height: 4),
+                          if (counterpartyLabel != null)
+                            Text(
+                              counterpartyLabel,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                               ),
-                            ],
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          if (provider != null) ...[
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              children: [
+                                if (!isSelfTransfer)
+                                  _CategoryChip(
+                                    label: category?.name ?? 'Uncategorized',
+                                    icon: iconForCategoryKey(category?.iconKey),
+                                    color: categoryColor,
+                                  ),
+                                if (selfTransferLabel != null)
+                                  _CategoryChip(
+                                    label: selfTransferLabel,
+                                    icon: Icons.sync_alt_rounded,
+                                    color: selfTransferColor,
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (selectionMode) ...[
+                          Icon(
+                            isSelected
+                                ? Icons.check_circle
+                                : Icons.radio_button_unchecked,
+                            size: 18,
+                            color: isSelected
+                                ? selectionColor
+                                : Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                           ),
+                          const SizedBox(height: 6),
+                        ],
+                        Text(
+                          '${isCredit ? '+' : '-'}ETB ${formatCurrency(transaction.amount)}',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isCredit
+                                ? Colors.green
+                                : Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                        if (dateTime != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            dateStr,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color:
+                                  Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          if (timeStr.isNotEmpty)
+                            Text(
+                              timeStr,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant
+                                    .withOpacity(0.7),
+                              ),
+                            ),
                         ],
                       ],
                     ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      if (selectionMode) ...[
-                        Icon(
-                          isSelected
-                              ? Icons.check_circle
-                              : Icons.radio_button_unchecked,
-                          size: 18,
-                          color: isSelected
-                              ? selectionColor
-                              : Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(height: 6),
-                      ],
-                      Text(
-                        '${isCredit ? '+' : '-'}ETB ${formatCurrency(transaction.amount)}',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: isCredit
-                              ? Colors.green
-                              : Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                      if (dateTime != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          dateStr,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        if (timeStr.isNotEmpty)
-                          Text(
-                            timeStr,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant
-                                  .withOpacity(0.7),
-                            ),
-                          ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

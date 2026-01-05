@@ -488,8 +488,12 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     List<Transaction> allTransactions,
     AccountSummary? selectedAccount,
   ) {
+    final provider = Provider.of<TransactionProvider>(context, listen: false);
     final filtered = <Transaction>[];
     for (final transaction in allTransactions) {
+      if (provider.isSelfTransfer(transaction)) {
+        continue;
+      }
       if (_selectedCard == 'Income' && transaction.type != 'CREDIT') {
         continue;
       }
@@ -524,8 +528,10 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   List<Transaction> _transactionsForCalendarCell(
     DateTime cellDate,
     List<Transaction> transactions,
+    TransactionProvider provider,
+    AccountSummary? selectedAccount,
   ) {
-    return transactions.where((transaction) {
+    final filtered = transactions.where((transaction) {
       final transactionDate = _resolveTransactionDate(transaction);
       if (transactionDate == null) return false;
       if (_selectedPeriod == 'Year') {
@@ -536,6 +542,46 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           transactionDate.month == cellDate.month &&
           transactionDate.day == cellDate.day;
     }).toList();
+
+    final selfTransfers = <Transaction>[];
+    for (final transaction in provider.allTransactions) {
+      if (!provider.isSelfTransfer(transaction)) continue;
+      final transactionDate = _resolveTransactionDate(transaction);
+      if (transactionDate == null) continue;
+      if (_selectedPeriod == 'Year') {
+        if (transactionDate.year != cellDate.year ||
+            transactionDate.month != cellDate.month) {
+          continue;
+        }
+      } else if (transactionDate.year != cellDate.year ||
+          transactionDate.month != cellDate.month ||
+          transactionDate.day != cellDate.day) {
+        continue;
+      }
+      if (_selectedBankFilter != null &&
+          transaction.bankId != _selectedBankFilter) {
+        continue;
+      }
+      if (selectedAccount != null &&
+          !_matchesSelectedAccount(transaction, selectedAccount)) {
+        continue;
+      }
+      selfTransfers.add(transaction);
+    }
+
+    if (selfTransfers.isEmpty) {
+      return filtered;
+    }
+
+    final references = {
+      for (final transaction in filtered) transaction.reference,
+    };
+    for (final transaction in selfTransfers) {
+      if (references.add(transaction.reference)) {
+        filtered.add(transaction);
+      }
+    }
+    return filtered;
   }
 
   String _formatCalendarSelectionLabel(DateTime cellDate) {
@@ -549,8 +595,14 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     DateTime cellDate,
     List<Transaction> transactions,
     TransactionProvider provider,
+    AccountSummary? selectedAccount,
   ) {
-    final filtered = _transactionsForCalendarCell(cellDate, transactions);
+    final filtered = _transactionsForCalendarCell(
+      cellDate,
+      transactions,
+      provider,
+      selectedAccount,
+    );
     final subtitle = _formatCalendarSelectionLabel(cellDate);
 
     Navigator.of(context).push(
@@ -560,6 +612,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
           provider: provider,
           title: 'Transactions',
           subtitle: subtitle,
+          dimSelfTransfers: true,
         ),
       ),
     );
@@ -875,6 +928,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                           date,
                           pnlTransactions,
                           provider,
+                          selectedAccount,
                         );
                       },
                       onResetTimeFrame: _resetTimeFrame,

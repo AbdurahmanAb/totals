@@ -10,6 +10,7 @@ import 'package:totals/services/bank_config_service.dart';
 import 'package:totals/services/budget_alert_service.dart';
 import 'package:totals/services/receiver_category_service.dart';
 import 'package:totals/services/notification_settings_service.dart';
+import 'package:totals/services/telebirr_bank_transfer_service.dart';
 
 class TransactionProvider with ChangeNotifier {
   final TransactionRepository _transactionRepo = TransactionRepository();
@@ -17,11 +18,14 @@ class TransactionProvider with ChangeNotifier {
   final CategoryRepository _categoryRepo = CategoryRepository();
   final BankConfigService _bankConfigService = BankConfigService();
   final BudgetAlertService _budgetAlertService = BudgetAlertService();
+  final TelebirrBankTransferService _telebirrMatchService =
+      TelebirrBankTransferService();
 
   List<Transaction> _transactions = [];
   List<Account> _accounts = [];
   List<Category> _categories = [];
   Map<int, Category> _categoryById = {};
+  Map<String, String> _selfTransferLabelByReference = {};
 
   // Summaries
   AllSummary? _summary;
@@ -50,6 +54,18 @@ class TransactionProvider with ChangeNotifier {
     return _categoryById[id];
   }
 
+  String? getSelfTransferLabel(Transaction transaction) {
+    return _selfTransferLabelByReference[transaction.reference];
+  }
+
+  bool isSelfTransfer(Transaction transaction) {
+    return _selfTransferLabelByReference.containsKey(transaction.reference);
+  }
+
+  bool _isSelfTransfer(Transaction transaction) {
+    return _selfTransferLabelByReference.containsKey(transaction.reference);
+  }
+
   Future<void> loadData() async {
     _isLoading = true;
     notifyListeners();
@@ -67,6 +83,11 @@ class TransactionProvider with ChangeNotifier {
 
       _allTransactions = await _transactionRepo.getTransactions();
       print("debug: Transactions: ${_allTransactions.length}");
+
+      final banks = await _bankConfigService.getBanks();
+      _selfTransferLabelByReference = _buildSelfTransferLabels(
+        _telebirrMatchService.findMatches(_allTransactions, banks),
+      );
 
       await _calculateSummaries(_allTransactions);
       _filterTransactions(_allTransactions);
@@ -150,6 +171,7 @@ class TransactionProvider with ChangeNotifier {
       double totalCredit = 0.0;
 
       for (var t in bankTransactions) {
+        if (_isSelfTransfer(t)) continue;
         double amount = t.amount;
         if (t.type == "DEBIT") {
           totalDebit += amount;
@@ -225,6 +247,7 @@ class TransactionProvider with ChangeNotifier {
       double totalDebit = 0.0;
       double totalCredit = 0.0;
       for (var t in accountTransactions) {
+        if (_isSelfTransfer(t)) continue;
         double amount = t.amount;
         if (t.type == "DEBIT") totalDebit += amount;
         if (t.type == "CREDIT") totalCredit += amount;
@@ -308,6 +331,17 @@ class TransactionProvider with ChangeNotifier {
               false) ||
           (t.reference.toLowerCase().contains(_searchKey.toLowerCase()));
     }).toList();
+  }
+
+  Map<String, String> _buildSelfTransferLabels(
+    List<TelebirrBankTransferMatch> matches,
+  ) {
+    final labels = <String, String>{};
+    for (final match in matches) {
+      labels[match.telebirrTransaction.reference] = 'from self';
+      labels[match.bankTransaction.reference] = 'to self';
+    }
+    return labels;
   }
 
   // Method to handle new incoming SMS transaction
