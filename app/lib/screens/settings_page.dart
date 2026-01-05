@@ -13,6 +13,7 @@ import 'package:totals/screens/categories_page.dart';
 import 'package:totals/screens/notification_settings_page.dart';
 import 'package:totals/widgets/clear_database_dialog.dart';
 import 'package:totals/screens/profile_management_page.dart';
+import 'package:totals/screens/telebirr_bank_transfer_matches_page.dart';
 import 'package:totals/repositories/profile_repository.dart';
 import 'package:totals/services/notification_settings_service.dart';
 
@@ -740,6 +741,19 @@ class _SettingsPageState extends State<SettingsPage>
                                   MaterialPageRoute(
                                     builder: (_) =>
                                         const NotificationSettingsPage(),
+                                  ),
+                                );
+                              },
+                            ),
+                            _buildDivider(context),
+                            _buildSettingTile(
+                              icon: Icons.swap_horiz_rounded,
+                              title: 'Telebirr bank matches',
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const TelebirrBankTransferMatchesPage(),
                                   ),
                                 );
                               },
