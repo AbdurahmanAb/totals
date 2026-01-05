@@ -6,6 +6,7 @@ import 'package:totals/models/transaction.dart';
 import 'package:totals/services/notification_intent_bus.dart';
 import 'package:totals/services/notification_settings_service.dart';
 import 'package:totals/utils/text_utils.dart';
+import 'package:totals/constants/cash_constants.dart';
 
 class NotificationService {
   NotificationService._();
@@ -374,6 +375,15 @@ class NotificationService {
 
   static Bank? _findBank(int? bankId) {
     if (bankId == null) return null;
+    if (bankId == CashConstants.bankId) {
+      return const Bank(
+        id: CashConstants.bankId,
+        name: CashConstants.bankName,
+        shortName: CashConstants.bankShortName,
+        codes: [],
+        image: CashConstants.bankImage,
+      );
+    }
     for (final bank in AppConstants.banks) {
       if (bank.id == bankId) return bank;
     }

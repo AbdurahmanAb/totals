@@ -28,6 +28,7 @@ import 'package:totals/widgets/today_transactions_list.dart';
 import 'package:totals/widgets/categorize_transaction_sheet.dart';
 import 'package:totals/widgets/category_filter_button.dart';
 import 'package:totals/widgets/category_filter_sheet.dart';
+import 'package:totals/constants/cash_constants.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -92,18 +93,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
         Provider.of<TransactionProvider>(context, listen: false).loadData();
 
-        final bankLabel = AppConstants.banks
-            .firstWhere(
-              (b) => b.id == tx.bankId,
-              orElse: () => const Bank(
-                id: -1,
-                name: 'Totals',
-                shortName: 'Totals',
-                codes: [],
-                image: '',
-              ),
-            )
-            .shortName;
+        final bankLabel = tx.bankId == CashConstants.bankId
+            ? CashConstants.bankShortName
+            : AppConstants.banks
+                .firstWhere(
+                  (b) => b.id == tx.bankId,
+                  orElse: () => const Bank(
+                    id: -1,
+                    name: 'Totals',
+                    shortName: 'Totals',
+                    codes: [],
+                    image: '',
+                  ),
+                )
+                .shortName;
 
         final sign = tx.type == 'CREDIT'
             ? '+'

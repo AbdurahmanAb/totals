@@ -8,6 +8,7 @@ import 'package:totals/services/bank_config_service.dart';
 import 'package:totals/utils/text_utils.dart';
 import 'package:totals/utils/gradients.dart';
 import 'package:totals/widgets/add_account_form.dart';
+import 'package:totals/constants/cash_constants.dart';
 
 class BanksSummaryList extends StatefulWidget {
   final List<BankSummary> banks;
@@ -153,25 +154,37 @@ class _BanksSummaryListState extends State<BanksSummaryList> {
   ) {
     final isSyncing = syncStatusService.hasAnyAccountSyncing(bank.bankId);
     final syncStatus = syncStatusService.getSyncStatusForBank(bank.bankId);
+    final isCashBank = bank.bankId == CashConstants.bankId;
 
     // Find bank info from cached banks
     Bank? bankInfo;
-    try {
-      bankInfo = _banks.firstWhere((element) => element.id == bank.bankId);
-    } catch (e) {
-      // Bank not found, return placeholder
-      return Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          color: Colors.grey.withOpacity(0.2),
-        ),
-        child: Center(
-          child: Text(
-            'Bank ${bank.bankId}',
-            style: const TextStyle(color: Colors.white),
-          ),
-        ),
+    if (bank.bankId == CashConstants.bankId) {
+      bankInfo = Bank(
+        id: CashConstants.bankId,
+        name: CashConstants.bankName,
+        shortName: CashConstants.bankShortName,
+        codes: const [],
+        image: CashConstants.bankImage,
+        colors: CashConstants.bankColors,
       );
+    } else {
+      try {
+        bankInfo = _banks.firstWhere((element) => element.id == bank.bankId);
+      } catch (e) {
+        // Bank not found, return placeholder
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            color: Colors.grey.withOpacity(0.2),
+          ),
+          child: Center(
+            child: Text(
+              'Bank ${bank.bankId}',
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        );
+      }
     }
 
     // Use colors from bank data if available, otherwise fallback to gradient ID
@@ -233,15 +246,28 @@ class _BanksSummaryListState extends State<BanksSummaryList> {
                             width: 50,
                             height: 50,
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: isCashBank
+                                  ? null
+                                  : Colors.white.withOpacity(0.2),
+                              gradient: isCashBank
+                                  ? GradientUtils.getGradientFromColors(
+                                      CashConstants.bankColors,
+                                    )
+                                  : null,
                               shape: BoxShape.circle,
                             ),
-                            child: ClipOval(
-                              child: Image.asset(
-                                bankInfo.image,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
+                            child: isCashBank
+                                ? const Icon(
+                                    Icons.payments_rounded,
+                                    color: Colors.white,
+                                    size: 26,
+                                  )
+                                : ClipOval(
+                                    child: Image.asset(
+                                      bankInfo.image,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
                           ),
                           const SizedBox(height: 12),
                           Text(

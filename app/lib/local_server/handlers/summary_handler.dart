@@ -7,6 +7,7 @@ import 'package:totals/models/transaction.dart';
 import 'package:totals/repositories/account_repository.dart';
 import 'package:totals/repositories/transaction_repository.dart';
 import 'package:totals/services/bank_config_service.dart';
+import 'package:totals/constants/cash_constants.dart';
 
 /// Handler for summary-related API endpoints
 class SummaryHandler {
@@ -42,6 +43,14 @@ class SummaryHandler {
 
       final bankAccounts = accounts.where((a) => a.bank == t.bankId).toList();
       if (bankAccounts.isEmpty) return false;
+
+      if (t.bankId == CashConstants.bankId) {
+        if (t.accountNumber == null || t.accountNumber!.isEmpty) {
+          return true;
+        }
+        return bankAccounts
+            .any((account) => account.accountNumber == t.accountNumber);
+      }
 
       if (t.accountNumber != null && t.accountNumber!.isNotEmpty) {
         for (var account in bankAccounts) {
@@ -300,6 +309,16 @@ class SummaryHandler {
 
   /// Finds a bank by ID from the database
   Future<Bank?> _getBankById(int bankId) async {
+    if (bankId == CashConstants.bankId) {
+      return Bank(
+        id: CashConstants.bankId,
+        name: CashConstants.bankName,
+        shortName: CashConstants.bankShortName,
+        codes: const [],
+        image: CashConstants.bankImage,
+        colors: CashConstants.bankColors,
+      );
+    }
     try {
       // Fetch banks from database (with caching)
       if (_cachedBanks == null) {

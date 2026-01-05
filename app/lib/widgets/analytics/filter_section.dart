@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:totals/models/bank.dart';
 import 'package:totals/services/bank_config_service.dart';
+import 'package:totals/constants/cash_constants.dart';
 
 class FilterSection extends StatefulWidget {
   final List bankSummaries;
@@ -48,11 +49,29 @@ class _FilterSectionState extends State<FilterSection> {
   }
 
   Bank? _getBankInfo(int bankId) {
+    if (bankId == CashConstants.bankId) {
+      return Bank(
+        id: CashConstants.bankId,
+        name: CashConstants.bankName,
+        shortName: CashConstants.bankShortName,
+        codes: const [],
+        image: CashConstants.bankImage,
+        colors: CashConstants.bankColors,
+      );
+    }
     try {
       return _banks.firstWhere((element) => element.id == bankId);
     } catch (e) {
       return _banks.isNotEmpty ? _banks.first : null;
     }
+  }
+
+  String _bankLabel(int bankId) {
+    if (bankId == CashConstants.bankId) {
+      return CashConstants.bankShortName;
+    }
+    final bankInfo = _getBankInfo(bankId);
+    return bankInfo?.shortName ?? 'Bank $bankId';
   }
 
   @override
@@ -72,12 +91,11 @@ class _FilterSectionState extends State<FilterSection> {
               ),
               const SizedBox(width: 8),
               ...widget.bankSummaries.map((bank) {
-                final bankInfo = _getBankInfo(bank.bankId);
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: _buildFilterChip(
                     context,
-                    bankInfo?.shortName ?? "Bank ${bank.bankId}",
+                    _bankLabel(bank.bankId),
                     widget.selectedBankFilter == bank.bankId,
                     onTap: () => widget.onBankFilterChanged(bank.bankId),
                   ),

@@ -12,6 +12,7 @@ import 'package:totals/widgets/analytics/transactions_list.dart';
 import 'package:totals/widgets/category_filter_button.dart';
 import 'package:totals/widgets/category_filter_sheet.dart';
 import 'package:totals/widgets/categorize_transaction_sheet.dart';
+import 'package:totals/constants/cash_constants.dart';
 
 class AccountDetailPage extends StatefulWidget {
   final String accountNumber;
@@ -92,6 +93,16 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
   }
 
   Bank? _getBankInfo() {
+    if (widget.bankId == CashConstants.bankId) {
+      return Bank(
+        id: CashConstants.bankId,
+        name: CashConstants.bankName,
+        shortName: CashConstants.bankShortName,
+        codes: const [],
+        image: CashConstants.bankImage,
+        colors: CashConstants.bankColors,
+      );
+    }
     try {
       return _banks.firstWhere((element) => element.id == widget.bankId);
     } catch (e) {
@@ -106,6 +117,9 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
   String _getBankLabel(Transaction transaction) {
     final bankId = transaction.bankId ?? widget.bankId;
     if (bankId == null) return 'Unknown bank';
+    if (bankId == CashConstants.bankId) {
+      return CashConstants.bankShortName;
+    }
     try {
       final bank = _banks.firstWhere((b) => b.id == bankId);
       final shortName = bank.shortName.trim();
@@ -275,6 +289,10 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
       // Use helper logic similar to provider to match account
       List<Transaction> transactions = provider.allTransactions.where((t) {
         if (t.bankId != widget.bankId) return false;
+
+        if (widget.bankId == CashConstants.bankId) {
+          return t.accountNumber == widget.accountNumber;
+        }
 
         // Get bank info with error handling
         try {
@@ -848,7 +866,8 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
                 ),
               ])
             ],
-          )));
+          )),
+          floatingActionButton: null);
     });
   }
 }

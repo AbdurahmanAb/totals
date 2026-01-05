@@ -7,6 +7,7 @@ import 'package:totals/providers/transaction_provider.dart';
 import 'package:totals/screens/transactions_for_period_page.dart';
 import 'package:totals/services/financial_insights.dart';
 import 'package:totals/widgets/insights/insights_explainer_bottomsheet.dart';
+import 'package:totals/constants/cash_constants.dart';
 
 import '../utils/map_keys.dart';
 
@@ -305,6 +306,9 @@ class InsightsPage extends StatelessWidget {
 
   String _bankLabel(int? bankId) {
     if (bankId == null) return 'Unknown bank';
+    if (bankId == CashConstants.bankId) {
+      return CashConstants.bankShortName;
+    }
     for (final bank in AppConstants.banks) {
       if (bank.id == bankId) return bank.shortName;
     }

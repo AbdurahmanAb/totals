@@ -7,6 +7,7 @@ import 'package:totals/utils/category_icons.dart';
 import 'package:totals/utils/category_style.dart';
 import 'package:totals/utils/text_utils.dart';
 import 'package:totals/widgets/categorize_transaction_sheet.dart';
+import 'package:totals/constants/cash_constants.dart';
 
 class TodayTransactionsList extends StatelessWidget {
   final List<Transaction> transactions;
@@ -126,6 +127,9 @@ class _TodayTransactionItem extends StatelessWidget {
     final bankLabel = (() {
       final bankId = transaction.bankId;
       if (bankId == null) return 'Unknown bank';
+      if (bankId == CashConstants.bankId) {
+        return CashConstants.bankShortName;
+      }
       for (final b in AppConstants.banks) {
         if (b.id == bankId) return b.shortName;
       }

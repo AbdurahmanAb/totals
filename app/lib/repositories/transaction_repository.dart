@@ -5,6 +5,7 @@ import 'package:totals/repositories/profile_repository.dart';
 import 'package:totals/services/bank_config_service.dart';
 import 'package:totals/services/receiver_category_service.dart';
 import 'package:totals/services/notification_settings_service.dart';
+import 'package:totals/constants/cash_constants.dart';
 
 class TransactionRepository {
   final BankConfigService _bankConfigService = BankConfigService();
@@ -341,6 +342,31 @@ class TransactionRepository {
       String accountNumber, int bank) async {
     final db = await DatabaseHelper.instance.database;
     final activeProfileId = await _getActiveProfileId();
+    if (bank == CashConstants.bankId) {
+      final whereParts = <String>[];
+      final whereArgs = <dynamic>[];
+
+      if (activeProfileId != null) {
+        whereParts.add('profileId = ?');
+        whereArgs.add(activeProfileId);
+      }
+
+      whereParts.add('bankId = ?');
+      whereArgs.add(bank);
+
+      if (accountNumber.isNotEmpty) {
+        whereParts.add('accountNumber = ?');
+        whereArgs.add(accountNumber);
+      }
+
+      await db.delete(
+        'transactions',
+        where: whereParts.join(' AND '),
+        whereArgs: whereArgs,
+      );
+      return;
+    }
+
     final banks = await _bankConfigService.getBanks();
     final currentBank = banks.firstWhere((b) => b.id == bank);
 

@@ -6,6 +6,7 @@ import 'package:totals/models/summary_models.dart';
 import 'package:totals/repositories/account_repository.dart';
 import 'package:totals/repositories/category_repository.dart';
 import 'package:totals/repositories/transaction_repository.dart';
+import 'package:totals/constants/cash_constants.dart';
 import 'package:totals/services/bank_config_service.dart';
 import 'package:totals/services/budget_alert_service.dart';
 import 'package:totals/services/receiver_category_service.dart';
@@ -85,9 +86,11 @@ class TransactionProvider with ChangeNotifier {
       print("debug: Transactions: ${_allTransactions.length}");
 
       final banks = await _bankConfigService.getBanks();
-      _selfTransferLabelByReference = _buildSelfTransferLabels(
+      final labels = _buildSelfTransferLabels(
         _telebirrMatchService.findMatches(_allTransactions, banks),
       );
+      labels.addAll(_buildCashTransferLabels(_allTransactions));
+      _selfTransferLabelByReference = labels;
 
       await _calculateSummaries(_allTransactions);
       _filterTransactions(_allTransactions);
@@ -111,6 +114,7 @@ class TransactionProvider with ChangeNotifier {
 
   Future<void> _calculateSummaries(List<Transaction> allTransactions) async {
     final banks = await _bankConfigService.getBanks();
+    final banksById = {for (final bank in banks) bank.id: bank};
 
     // Filter out transactions that don't have a matching account (orphaned transactions)
     final validTransactions = allTransactions.where((t) {
@@ -120,11 +124,17 @@ class TransactionProvider with ChangeNotifier {
       final bankAccounts = _accounts.where((a) => a.bank == t.bankId).toList();
       if (bankAccounts.isEmpty) return false;
 
+      if (t.bankId == CashConstants.bankId) {
+        return true;
+      }
+
+      final bank = banksById[t.bankId];
+      if (bank == null) return false;
+
       // If transaction has accountNumber, verify it matches an account
       if (t.accountNumber != null && t.accountNumber!.isNotEmpty) {
         for (var account in bankAccounts) {
           bool matches = false;
-          final bank = banks.firstWhere((b) => b.id == t.bankId);
 
           if (bank.uniformMasking == true) {
             // CBE: match last 4 digits
@@ -169,14 +179,20 @@ class TransactionProvider with ChangeNotifier {
 
       double totalDebit = 0.0;
       double totalCredit = 0.0;
+      double cashBalance = 0.0;
 
       for (var t in bankTransactions) {
-        if (_isSelfTransfer(t)) continue;
         double amount = t.amount;
         if (t.type == "DEBIT") {
-          totalDebit += amount;
+          cashBalance -= amount;
+          if (!_isSelfTransfer(t)) {
+            totalDebit += amount;
+          }
         } else if (t.type == "CREDIT") {
-          totalCredit += amount;
+          cashBalance += amount;
+          if (!_isSelfTransfer(t)) {
+            totalCredit += amount;
+          }
         }
       }
 
@@ -184,7 +200,10 @@ class TransactionProvider with ChangeNotifier {
           accounts.fold(0.0, (sum, a) => sum + (a.settledBalance ?? 0.0));
       double pendingCredit =
           accounts.fold(0.0, (sum, a) => sum + (a.pendingCredit ?? 0.0));
-      double totalBalance = accounts.fold(0.0, (sum, a) => sum + a.balance);
+      final isCashBank = bankId == CashConstants.bankId;
+      double totalBalance = isCashBank
+          ? cashBalance
+          : accounts.fold(0.0, (sum, a) => sum + a.balance);
 
       return BankSummary(
         bankId: bankId,
@@ -206,7 +225,12 @@ class TransactionProvider with ChangeNotifier {
         bool bankMatch = t.bankId == account.bank;
         if (!bankMatch) return false;
 
-        final bank = banks.firstWhere((b) => b.id == t.bankId);
+        if (account.bank == CashConstants.bankId) {
+          return true;
+        }
+
+        final bank = banksById[t.bankId];
+        if (bank == null) return false;
 
         if (bank.uniformMasking == true) {
           // CBE check: last 4 digits
@@ -226,32 +250,48 @@ class TransactionProvider with ChangeNotifier {
       // This handles legacy data or parsing failures where account wasn't captured.
       // NOTE: Skip this for banks that match by bankId only (uniformMasking == false)
       // because they already get all transactions via the else clause above
-      try {
-        final accountBank = banks.firstWhere((b) => b.id == account.bank);
-        if (accountBank.uniformMasking != false) {
-          var bankAccounts =
-              _accounts.where((a) => a.bank == account.bank).toList();
-          if (bankAccounts.length == 1 && bankAccounts.first == account) {
-            var orphanedTransactions = validTransactions
-                .where((t) =>
-                    t.bankId == account.bank &&
-                    (t.accountNumber == null || t.accountNumber!.isEmpty))
-                .toList();
-            accountTransactions.addAll(orphanedTransactions);
+      if (account.bank != CashConstants.bankId) {
+        try {
+          final accountBank = banksById[account.bank];
+          if (accountBank != null && accountBank.uniformMasking != false) {
+            var bankAccounts =
+                _accounts.where((a) => a.bank == account.bank).toList();
+            if (bankAccounts.length == 1 && bankAccounts.first == account) {
+              var orphanedTransactions = validTransactions
+                  .where((t) =>
+                      t.bankId == account.bank &&
+                      (t.accountNumber == null || t.accountNumber!.isEmpty))
+                  .toList();
+              accountTransactions.addAll(orphanedTransactions);
+            }
           }
+        } catch (e) {
+          // Bank not found in database, skip orphaned transactions fallback
         }
-      } catch (e) {
-        // Bank not found in database, skip orphaned transactions fallback
       }
 
       double totalDebit = 0.0;
       double totalCredit = 0.0;
+      double cashBalance = 0.0;
       for (var t in accountTransactions) {
-        if (_isSelfTransfer(t)) continue;
         double amount = t.amount;
-        if (t.type == "DEBIT") totalDebit += amount;
-        if (t.type == "CREDIT") totalCredit += amount;
+        if (t.type == "DEBIT") {
+          cashBalance -= amount;
+          if (!_isSelfTransfer(t)) {
+            totalDebit += amount;
+          }
+        }
+        if (t.type == "CREDIT") {
+          cashBalance += amount;
+          if (!_isSelfTransfer(t)) {
+            totalCredit += amount;
+          }
+        }
       }
+
+      final isCashAccount = account.bank == CashConstants.bankId;
+      final accountBalance =
+          isCashAccount ? cashBalance : account.balance;
 
       return AccountSummary(
         bankId: account.bank,
@@ -261,7 +301,7 @@ class TransactionProvider with ChangeNotifier {
         totalCredit: totalCredit,
         totalDebit: totalDebit,
         settledBalance: account.settledBalance ?? 0.0,
-        balance: account.balance,
+        balance: accountBalance,
         pendingCredit: account.pendingCredit ?? 0.0,
       );
     }).toList();
@@ -341,6 +381,30 @@ class TransactionProvider with ChangeNotifier {
       labels[match.telebirrTransaction.reference] = 'from self';
       labels[match.bankTransaction.reference] = 'to self';
     }
+    return labels;
+  }
+
+  Map<String, String> _buildCashTransferLabels(
+    List<Transaction> transactions,
+  ) {
+    final labels = <String, String>{};
+    final byReference = {
+      for (final transaction in transactions) transaction.reference: transaction,
+    };
+
+    for (final transaction in transactions) {
+      if (transaction.bankId != CashConstants.bankId) continue;
+      final reference = transaction.reference;
+      if (!reference.startsWith(CashConstants.atmReferencePrefix)) continue;
+
+      final linkedReference =
+          reference.substring(CashConstants.atmReferencePrefix.length);
+      if (!byReference.containsKey(linkedReference)) continue;
+
+      labels[reference] = 'from self';
+      labels[linkedReference] = 'to self';
+    }
+
     return labels;
   }
 

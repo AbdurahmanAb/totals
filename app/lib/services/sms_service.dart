@@ -14,6 +14,7 @@ import 'package:totals/repositories/failed_parse_repository.dart';
 import 'package:flutter/widgets.dart';
 import 'package:totals/services/notification_service.dart';
 import 'package:totals/services/budget_alert_service.dart';
+import 'package:totals/constants/cash_constants.dart';
 
 enum ParseStatus {
   success,
@@ -269,6 +270,67 @@ class SmsService {
     return double.tryParse(cleaned) ?? 0.0;
   }
 
+  static bool _isAtmWithdrawal(
+    Map<String, dynamic> details,
+    String messageBody,
+  ) {
+    final type = (details['type'] ?? '').toString().toUpperCase();
+    if (type != 'DEBIT') return false;
+
+    final description =
+        (details['patternDescription'] as String?)?.toLowerCase();
+    if (description != null && description.contains('atm')) {
+      return true;
+    }
+
+    final normalizedBody = messageBody.toLowerCase();
+    return normalizedBody.contains('atm') &&
+        normalizedBody.contains('withdraw');
+  }
+
+  static Future<void> _ensureCashAccount() async {
+    final accountRepo = AccountRepository();
+    final accounts = await accountRepo.getAccounts();
+    final hasCash = accounts.any((a) => a.bank == CashConstants.bankId);
+    if (hasCash) return;
+
+    final cashAccount = Account(
+      accountNumber: CashConstants.defaultAccountNumber,
+      bank: CashConstants.bankId,
+      balance: 0.0,
+      accountHolderName: CashConstants.defaultAccountHolderName,
+    );
+    await accountRepo.saveAccount(cashAccount);
+  }
+
+  static Future<void> _createCashTransactionForAtmWithdrawal(
+    Transaction withdrawal,
+    List<Transaction> existingTransactions,
+  ) async {
+    final bankId = withdrawal.bankId;
+    if (bankId == null || bankId == CashConstants.bankId) return;
+
+    final cashReference = CashConstants.buildAtmReference(withdrawal.reference);
+    if (existingTransactions.any((t) => t.reference == cashReference)) {
+      return;
+    }
+
+    await _ensureCashAccount();
+
+    final cashTransaction = Transaction(
+      amount: withdrawal.amount,
+      reference: cashReference,
+      creditor: 'ATM withdrawal',
+      time: withdrawal.time ?? DateTime.now().toIso8601String(),
+      bankId: CashConstants.bankId,
+      type: 'CREDIT',
+      transactionLink: withdrawal.reference,
+      accountNumber: CashConstants.defaultAccountNumber,
+    );
+
+    await TransactionRepository().saveTransaction(cashTransaction);
+  }
+
   // Static processing logic so it can be used by background handler too.
   static Future<Transaction?> processMessage(
     String messageBody,
@@ -364,6 +426,15 @@ class SmsService {
     String? newRef = details['reference'];
     if (newRef != null && existingTx.any((t) => t.reference == newRef)) {
       print("debug: Duplicate transaction skipped");
+      if (_isAtmWithdrawal(details, messageBody)) {
+        try {
+          final existing = existingTx
+              .firstWhere((transaction) => transaction.reference == newRef);
+          await _createCashTransactionForAtmWithdrawal(existing, existingTx);
+        } catch (e) {
+          print("debug: Error reconciling cash transfer: $e");
+        }
+      }
       if (recordFailure) {
         await FailedParseRepository().add(FailedParse(
             address: senderAddress,
@@ -448,6 +519,14 @@ class SmsService {
     await txRepo.saveTransaction(newTx);
 
     print("debug: New transaction saved: ${newTx.reference}");
+
+    if (_isAtmWithdrawal(details, messageBody)) {
+      try {
+        await _createCashTransactionForAtmWithdrawal(newTx, existingTx);
+      } catch (e) {
+        print("debug: Error creating cash transfer: $e");
+      }
+    }
 
     if (notifyUser) {
       await NotificationService.instance.showTransactionNotification(

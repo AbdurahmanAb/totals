@@ -4,6 +4,7 @@ import 'package:totals/models/account.dart';
 import 'package:totals/repositories/transaction_repository.dart';
 import 'package:totals/repositories/profile_repository.dart';
 import 'package:totals/services/bank_config_service.dart';
+import 'package:totals/constants/cash_constants.dart';
 
 class AccountRepository {
   final ProfileRepository _profileRepo = ProfileRepository();
@@ -12,9 +13,47 @@ class AccountRepository {
     return await _profileRepo.getActiveProfileId();
   }
 
+  Future<void> _ensureCashAccount(Database db, int? profileId) async {
+    final whereParts = <String>[
+      'bank = ?',
+      'accountNumber = ?',
+    ];
+    final whereArgs = <dynamic>[
+      CashConstants.bankId,
+      CashConstants.defaultAccountNumber,
+    ];
+    if (profileId != null) {
+      whereParts.add('profileId = ?');
+      whereArgs.add(profileId);
+    }
+
+    final existing = await db.query(
+      'accounts',
+      where: whereParts.join(' AND '),
+      whereArgs: whereArgs,
+      limit: 1,
+    );
+    if (existing.isNotEmpty) return;
+
+    await db.insert(
+      'accounts',
+      {
+        'accountNumber': CashConstants.defaultAccountNumber,
+        'bank': CashConstants.bankId,
+        'balance': 0.0,
+        'accountHolderName': CashConstants.defaultAccountHolderName,
+        'settledBalance': 0.0,
+        'pendingCredit': 0.0,
+        if (profileId != null) 'profileId': profileId,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
   Future<List<Account>> getAccounts() async {
     final db = await DatabaseHelper.instance.database;
     final activeProfileId = await _getActiveProfileId();
+    await _ensureCashAccount(db, activeProfileId);
     
     final List<Map<String, dynamic>> maps = activeProfileId != null
         ? await db.query(
@@ -113,6 +152,17 @@ class AccountRepository {
 
   Future<void> deleteAccount(String accountNumber, int bank) async {
     final db = await DatabaseHelper.instance.database;
+
+    if (bank == CashConstants.bankId) {
+      final transactionRepo = TransactionRepository();
+      await transactionRepo.deleteTransactionsByAccount(accountNumber, bank);
+      await db.delete(
+        'accounts',
+        where: 'accountNumber = ? AND bank = ?',
+        whereArgs: [accountNumber, bank],
+      );
+      return;
+    }
 
     // First, check if this is the only account for this bank
     // If so, we should also delete transactions with NULL accountNumber for this bank

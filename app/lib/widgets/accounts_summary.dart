@@ -9,6 +9,8 @@ import 'package:totals/models/summary_models.dart';
 import 'package:totals/services/account_sync_status_service.dart';
 import 'package:totals/repositories/account_repository.dart';
 import 'package:totals/providers/transaction_provider.dart';
+import 'package:totals/constants/cash_constants.dart';
+import 'package:totals/utils/gradients.dart';
 
 class AccountsSummaryList extends StatefulWidget {
   final List<AccountSummary> accountSummaries;
@@ -50,6 +52,16 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
   }
 
   Bank? _getBankInfo(int bankId) {
+    if (bankId == CashConstants.bankId) {
+      return Bank(
+        id: CashConstants.bankId,
+        name: CashConstants.bankName,
+        shortName: CashConstants.bankShortName,
+        codes: const [],
+        image: CashConstants.bankImage,
+        colors: CashConstants.bankColors,
+      );
+    }
     try {
       return _banks.firstWhere((element) => element.id == bankId);
     } catch (e) {
@@ -70,6 +82,11 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
               account.accountNumber,
               account.bankId,
             );
+            final isCashAccount = account.bankId == CashConstants.bankId;
+            final accountNumberLabel =
+                isCashAccount ? 'On-hand cash' : account.accountNumber;
+            final accountHolderLabel =
+                isCashAccount ? 'Personal funds' : account.accountHolderName;
             return Column(
               children: [
                 Container(
@@ -101,11 +118,26 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                               height: 60,
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
-                                child: Image.asset(
-                                  _getBankInfo(account.bankId)?.image ??
-                                      "assets/images/cbe.png",
-                                  fit: BoxFit.cover,
-                                ),
+                                child: isCashAccount
+                                    ? Container(
+                                        decoration: BoxDecoration(
+                                          gradient: GradientUtils
+                                              .getGradientFromColors(
+                                                  CashConstants.bankColors),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                        child: const Icon(
+                                          Icons.payments_rounded,
+                                          color: Colors.white,
+                                          size: 28,
+                                        ),
+                                      )
+                                    : Image.asset(
+                                        _getBankInfo(account.bankId)?.image ??
+                                            "assets/images/cbe.png",
+                                        fit: BoxFit.cover,
+                                      ),
                               ),
                             ),
                             SizedBox(width: 16),
@@ -140,7 +172,7 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                                         )
                                       ]),
                                   Text(
-                                    account.accountNumber,
+                                    accountNumberLabel,
                                     style: TextStyle(
                                       fontSize: 14,
                                       color: Theme.of(context)
@@ -149,7 +181,7 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                                     ),
                                   ),
                                   Text(
-                                    account.accountHolderName,
+                                    accountHolderLabel,
                                     style: TextStyle(
                                       fontSize: 14,
                                       color: Theme.of(context)
@@ -202,7 +234,7 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                                               ? formatNumberWithComma(
                                                       account.balance) +
                                                   " ETB"
-                                              : "******",
+                                              :  "******",
                                           style: TextStyle(
                                             fontSize: 14,
                                             fontWeight: FontWeight.bold,
@@ -435,41 +467,43 @@ class _AccountsSummaryListState extends State<AccountsSummaryList> {
                                   ),
                                 ),
                                 const SizedBox(height: 12),
-                                // Delete Account Button - Secondary/subtle action
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: TextButton.icon(
-                                    onPressed: () {
-                                      _showDeleteConfirmation(context, account);
-                                    },
-                                    icon: Icon(
-                                      Icons.delete_outline_rounded,
-                                      size: 18,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant
-                                          .withOpacity(0.6),
-                                    ),
-                                    label: Text(
-                                      "Remove Account",
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
+                                if (!isCashAccount)
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: TextButton.icon(
+                                      onPressed: () {
+                                        _showDeleteConfirmation(
+                                            context, account);
+                                      },
+                                      icon: Icon(
+                                        Icons.delete_outline_rounded,
+                                        size: 18,
                                         color: Theme.of(context)
                                             .colorScheme
                                             .onSurfaceVariant
                                             .withOpacity(0.6),
                                       ),
-                                    ),
-                                    style: TextButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 10),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
+                                      label: Text(
+                                        "Remove Account",
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant
+                                              .withOpacity(0.6),
+                                        ),
+                                      ),
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 16, vertical: 10),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
                               ],
                             )
                           : Container(),

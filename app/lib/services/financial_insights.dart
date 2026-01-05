@@ -4,6 +4,7 @@ import 'package:totals/models/category.dart';
 
 import '../data/consts.dart';
 import '../models/transaction.dart';
+import '../constants/cash_constants.dart';
 import '../utils/map_keys.dart';
 import '../utils/math_utils.dart';
 
@@ -470,6 +471,9 @@ class InsightsService {
     
     // Fallback to bank name if available
     if (transactions.isNotEmpty && transactions.first.bankId != null) {
+      if (transactions.first.bankId == CashConstants.bankId) {
+        return CashConstants.bankShortName;
+      }
       for (final bank in AppConstants.banks) {
         if (bank.id == transactions.first.bankId) {
           return bank.shortName;

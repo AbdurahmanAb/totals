@@ -32,6 +32,7 @@ class PatternParser {
 
           extracted['type'] = pattern.type;
           extracted['bankId'] = pattern.bankId; // Default bank ID from pattern
+          extracted['patternDescription'] = pattern.description;
 
           if (match.groupNames.contains('amount')) {
             print("debug: Extracted amount: ${match.namedGroup('amount')}");
