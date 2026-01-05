@@ -12,6 +12,7 @@ import 'package:totals/models/account.dart';
 import 'package:totals/repositories/account_repository.dart';
 import 'package:totals/utils/text_utils.dart';
 import 'package:totals/data/all_banks_from_assets.dart';
+import 'package:totals/constants/cash_constants.dart';
 
 class VerifyPaymentsPage extends StatefulWidget {
   const VerifyPaymentsPage({super.key});
@@ -57,12 +58,14 @@ class _VerifyPaymentsPageState extends State<VerifyPaymentsPage> {
 
   Future<void> _loadAccounts() async {
     final accounts = await _accountRepo.getAccounts();
+    final filtered =
+        accounts.where((account) => account.bank != CashConstants.bankId).toList();
     if (mounted) {
       setState(() {
-        _accounts = accounts;
+        _accounts = filtered;
         // Select first account by default
-        if (accounts.isNotEmpty && _selectedAccount == null) {
-          _selectedAccount = accounts.first;
+        if (filtered.isNotEmpty && _selectedAccount == null) {
+          _selectedAccount = filtered.first;
         }
       });
     }

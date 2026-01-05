@@ -7,6 +7,7 @@ import 'package:totals/services/bank_config_service.dart';
 import 'package:totals/utils/category_icons.dart';
 import 'package:totals/utils/category_style.dart';
 import 'package:totals/utils/text_utils.dart';
+import 'package:totals/constants/cash_constants.dart';
 
 class TransactionsList extends StatefulWidget {
   final List<Transaction> transactions;
@@ -65,6 +66,7 @@ class _TransactionsListState extends State<TransactionsList> {
           for (final bank in banks)
             bank.id: _bankLabelFor(bank),
         };
+        _bankLabelsById[CashConstants.bankId] = CashConstants.bankShortName;
       });
     } catch (e) {
       // Keep fallback labels if bank config isn't available.
@@ -81,6 +83,9 @@ class _TransactionsListState extends State<TransactionsList> {
   String _getBankLabel(Transaction transaction) {
     final bankId = transaction.bankId;
     if (bankId == null) return 'Unknown bank';
+    if (bankId == CashConstants.bankId) {
+      return CashConstants.bankShortName;
+    }
     return _bankLabelsById[bankId] ?? 'Bank $bankId';
   }
 

@@ -10,6 +10,7 @@ class GradientUtils {
       Color.fromARGB(255, 29, 56, 229),
       Color.fromARGB(255, 144, 213, 238)
     ], // Telebirr: White to Light Green
+    100: [Color(0xFF0F766E), Color(0xFF14B8A6)], // Cash: Teal
     99: [
       Color(0xFF2563EB),
       Color(0xFF1E3A8A)

@@ -4,6 +4,10 @@ import 'package:totals/services/bank_config_service.dart';
 import 'package:totals/models/summary_models.dart';
 import 'package:totals/widgets/accounts_summary.dart';
 import 'package:totals/widgets/total_balance_card.dart';
+import 'package:totals/constants/cash_constants.dart';
+import 'package:totals/providers/transaction_provider.dart';
+import 'package:totals/widgets/add_cash_transaction_sheet.dart';
+import 'package:provider/provider.dart';
 
 class BankDetail extends StatefulWidget {
   final int bankId;
@@ -46,6 +50,16 @@ class _BankDetailState extends State<BankDetail> {
   }
 
   Bank? _getBankInfo() {
+    if (widget.bankId == CashConstants.bankId) {
+      return Bank(
+        id: CashConstants.bankId,
+        name: CashConstants.bankName,
+        shortName: CashConstants.bankShortName,
+        codes: const [],
+        image: CashConstants.bankImage,
+        colors: CashConstants.bankColors,
+      );
+    }
     try {
       return _banks.firstWhere((element) => element.id == widget.bankId);
     } catch (e) {
@@ -55,6 +69,7 @@ class _BankDetailState extends State<BankDetail> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     // Calculate totals for this bank
     double totalBalance = 0;
     double totalCredit = 0;
@@ -77,6 +92,11 @@ class _BankDetailState extends State<BankDetail> {
     final bankInfo = _getBankInfo();
     final bankName = bankInfo?.name ?? "Unknown Bank";
     final bankImage = bankInfo?.image ?? "assets/images/cbe.png";
+
+    final isCashBank = widget.bankId == CashConstants.bankId;
+    final cashAccountNumber = widget.accountSummaries.isNotEmpty
+        ? widget.accountSummaries.first.accountNumber
+        : CashConstants.defaultAccountNumber;
 
     return Column(
       children: [
@@ -102,6 +122,71 @@ class _BankDetailState extends State<BankDetail> {
           },
         ),
         const SizedBox(height: 12),
+        if (isCashBank) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Quick add',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: () => showAddCashTransactionSheet(
+                          context: context,
+                          provider: Provider.of<TransactionProvider>(
+                            context,
+                            listen: false,
+                          ),
+                          accountNumber: cashAccountNumber,
+                          initialIsDebit: true,
+                        ),
+                        icon: const Icon(Icons.remove_circle_outline),
+                        label: const Text('Expense'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: scheme.error,
+                          foregroundColor: scheme.onError,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: () => showAddCashTransactionSheet(
+                          context: context,
+                          provider: Provider.of<TransactionProvider>(
+                            context,
+                            listen: false,
+                          ),
+                          accountNumber: cashAccountNumber,
+                          initialIsDebit: false,
+                        ),
+                        icon: const Icon(Icons.add_circle_outline),
+                        label: const Text('Income'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
         Expanded(
           child: AccountsSummaryList(
               accountSummaries: widget.accountSummaries,

@@ -6,6 +6,7 @@ import 'package:totals/models/transaction.dart';
 import 'package:totals/repositories/transaction_repository.dart';
 import 'package:totals/repositories/account_repository.dart';
 import 'package:totals/services/bank_config_service.dart';
+import 'package:totals/constants/cash_constants.dart';
 
 /// Handler for transaction-related API endpoints
 class TransactionsHandler {
@@ -175,6 +176,14 @@ class TransactionsHandler {
       final bankAccounts = accounts.where((a) => a.bank == t.bankId).toList();
       if (bankAccounts.isEmpty) return false;
 
+      if (t.bankId == CashConstants.bankId) {
+        if (t.accountNumber == null || t.accountNumber!.isEmpty) {
+          return true;
+        }
+        return bankAccounts
+            .any((account) => account.accountNumber == t.accountNumber);
+      }
+
       if (t.accountNumber != null && t.accountNumber!.isNotEmpty) {
         for (var account in bankAccounts) {
           bool matches = false;
@@ -222,16 +231,20 @@ class TransactionsHandler {
         bool matchesAccount = false;
         // This will be validated against accounts, so we can use simple matching here
         if (t.accountNumber != null) {
-          final bank = banks.firstWhere((b) => b.id == t.bankId);
-          if (bank.uniformMasking == true) {
-            matchesAccount = t.accountNumber!
-                    .substring(t.accountNumber!.length - bank.maskPattern!) ==
-                accountNumber
-                    .substring(accountNumber.length - bank.maskPattern!);
-          } else if (bank.uniformMasking == false) {
-            matchesAccount = true;
-          } else {
+          if (t.bankId == CashConstants.bankId) {
             matchesAccount = t.accountNumber == accountNumber;
+          } else {
+            final bank = banks.firstWhere((b) => b.id == t.bankId);
+            if (bank.uniformMasking == true) {
+              matchesAccount = t.accountNumber!
+                      .substring(t.accountNumber!.length - bank.maskPattern!) ==
+                  accountNumber
+                      .substring(accountNumber.length - bank.maskPattern!);
+            } else if (bank.uniformMasking == false) {
+              matchesAccount = true;
+            } else {
+              matchesAccount = t.accountNumber == accountNumber;
+            }
           }
         }
         if (!matchesAccount) return false;
@@ -303,6 +316,16 @@ class TransactionsHandler {
 
   /// Finds a bank by ID from the database
   Future<Bank?> _getBankById(int bankId) async {
+    if (bankId == CashConstants.bankId) {
+      return Bank(
+        id: CashConstants.bankId,
+        name: CashConstants.bankName,
+        shortName: CashConstants.bankShortName,
+        codes: const [],
+        image: CashConstants.bankImage,
+        colors: CashConstants.bankColors,
+      );
+    }
     try {
       // Fetch banks from database (with caching)
       if (_cachedBanks == null) {

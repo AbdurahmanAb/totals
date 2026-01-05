@@ -21,6 +21,7 @@ import 'package:totals/widgets/categorize_transaction_sheet.dart';
 import 'package:totals/widgets/category_filter_button.dart';
 import 'package:totals/widgets/category_filter_sheet.dart';
 import 'package:totals/screens/wrapped_2025_page.dart';
+import 'package:totals/constants/cash_constants.dart';
 
 class AnalyticsPage extends StatefulWidget {
   const AnalyticsPage({super.key});
@@ -290,6 +291,9 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
 
   bool _matchesSelectedAccount(
       Transaction transaction, AccountSummary account) {
+    if (account.bankId == CashConstants.bankId) {
+      return transaction.bankId == CashConstants.bankId;
+    }
     final txnAccount = transaction.accountNumber;
     if (txnAccount == null || txnAccount.isEmpty) {
       return transaction.bankId == account.bankId;
@@ -323,6 +327,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     if (bankId == null) return false;
     final bankAccounts = accountsByBank[bankId] ?? const <AccountSummary>[];
     if (bankAccounts.isEmpty) return false;
+    if (bankId == CashConstants.bankId) return true;
 
     if (transaction.accountNumber != null &&
         transaction.accountNumber!.isNotEmpty) {

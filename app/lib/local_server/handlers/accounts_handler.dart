@@ -5,6 +5,7 @@ import 'package:totals/models/account.dart';
 import 'package:totals/models/bank.dart';
 import 'package:totals/repositories/account_repository.dart';
 import 'package:totals/services/bank_config_service.dart';
+import 'package:totals/constants/cash_constants.dart';
 
 /// Handler for account-related API endpoints
 class AccountsHandler {
@@ -99,6 +100,16 @@ class AccountsHandler {
 
   /// Finds a bank by ID from the database
   Future<Bank?> _getBankById(int bankId) async {
+    if (bankId == CashConstants.bankId) {
+      return Bank(
+        id: CashConstants.bankId,
+        name: CashConstants.bankName,
+        shortName: CashConstants.bankShortName,
+        codes: const [],
+        image: CashConstants.bankImage,
+        colors: CashConstants.bankColors,
+      );
+    }
     try {
       // Fetch banks from database (with caching)
       if (_cachedBanks == null) {

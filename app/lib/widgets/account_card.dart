@@ -5,6 +5,7 @@ import 'package:totals/models/summary_models.dart';
 import 'package:totals/services/bank_config_service.dart';
 import 'package:totals/utils/gradients.dart';
 import 'package:totals/utils/text_utils.dart';
+import 'package:totals/constants/cash_constants.dart';
 
 class AccountCard extends StatefulWidget {
   final AccountSummary account;
@@ -71,20 +72,31 @@ class _AccountCardState extends State<AccountCard> {
   Widget build(BuildContext context) {
     // Determine Bank Info
     Bank bank;
-    try {
-      bank = _banks.firstWhere(
-        (b) => b.id == widget.account.bankId,
+    if (widget.account.bankId == CashConstants.bankId) {
+      bank = Bank(
+        id: CashConstants.bankId,
+        name: CashConstants.bankName,
+        shortName: CashConstants.bankShortName,
+        codes: const [],
+        image: CashConstants.bankImage,
+        colors: CashConstants.bankColors,
       );
-    } catch (e) {
-      // Bank not found, use fallback
-      bank = _banks.isNotEmpty
-          ? _banks[0]
-          : Bank(
-              id: 0,
-              name: "Unknown",
-              shortName: "?",
-              codes: [],
-              image: "assets/images/cbe.png");
+    } else {
+      try {
+        bank = _banks.firstWhere(
+          (b) => b.id == widget.account.bankId,
+        );
+      } catch (e) {
+        // Bank not found, use fallback
+        bank = _banks.isNotEmpty
+            ? _banks[0]
+            : Bank(
+                id: 0,
+                name: "Unknown",
+                shortName: "?",
+                codes: [],
+                image: "assets/images/cbe.png");
+      }
     }
 
     final displayBalance = isHidden

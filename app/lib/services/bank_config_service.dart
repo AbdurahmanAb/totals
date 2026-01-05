@@ -5,10 +5,15 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:totals/database/database_helper.dart';
 import 'package:totals/models/bank.dart';
+import 'package:totals/constants/cash_constants.dart';
 
 class BankConfigService {
   static const String _banksAssetPath = 'assets/banks.json';
   List<Bank>? _assetBanksCache;
+
+  List<Bank> _filterCashBanks(List<Bank> banks) {
+    return banks.where((bank) => bank.id != CashConstants.bankId).toList();
+  }
 
   Future<List<Bank>> _loadAssetBanks() async {
     if (_assetBanksCache != null) {
@@ -17,7 +22,7 @@ class BankConfigService {
 
     try {
       final body = await rootBundle.loadString(_banksAssetPath);
-      final banks = _parseBanksFromJson(body);
+      final banks = _filterCashBanks(_parseBanksFromJson(body));
       _assetBanksCache = banks;
       print("debug: Loaded ${banks.length} banks from assets");
       return banks;
@@ -35,7 +40,7 @@ class BankConfigService {
     final List<Map<String, dynamic>> maps = await db.query('banks');
     if (maps.isNotEmpty) {
       try {
-        final banks = maps.map((map) {
+        final parsedBanks = maps.map((map) {
           return Bank.fromJson({
             'id': map['id'],
             'name': map['name'],
@@ -52,6 +57,10 @@ class BankConfigService {
                 : null,
           });
         }).toList();
+        final banks = _filterCashBanks(parsedBanks);
+        if (banks.length != parsedBanks.length) {
+          await saveBanks(banks);
+        }
         print("debug: Loaded ${banks.length} banks from database");
         return banks;
       } catch (e) {

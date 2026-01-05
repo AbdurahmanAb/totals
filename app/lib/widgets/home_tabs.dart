@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:totals/models/bank.dart';
 import 'package:totals/services/bank_config_service.dart';
+import 'package:totals/constants/cash_constants.dart';
 
 class HomeTabs extends StatefulWidget {
   static const int recentTabId = -1;
@@ -42,6 +43,9 @@ class _HomeTabsState extends State<HomeTabs> {
   }
 
   String _getBankShortName(int bankId) {
+    if (bankId == CashConstants.bankId) {
+      return CashConstants.bankShortName;
+    }
     try {
       return _banks.firstWhere((element) => element.id == bankId).shortName;
     } catch (e) {

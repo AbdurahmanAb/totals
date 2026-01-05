@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:totals/providers/transaction_provider.dart';
+import 'package:totals/models/bank.dart';
 import 'package:totals/models/transaction.dart';
 import 'package:totals/services/bank_config_service.dart';
 import 'package:intl/intl.dart';
+import 'package:totals/constants/cash_constants.dart';
 
 class IncomeExpenseCards extends StatelessWidget {
   final String? selectedCard;
@@ -116,33 +118,50 @@ class IncomeExpenseCards extends StatelessWidget {
 
         // Filter by account if selected
         if (selectedAccountFilter != null && selectedBankFilter != null) {
-          final account = accounts.firstWhere(
-            (a) =>
-                a.accountNumber == selectedAccountFilter &&
-                a.bankId == selectedBankFilter,
-            orElse: () => accounts
-                .firstWhere((a) => a.bankId == selectedBankFilter, orElse: () {
-              if (accounts.isEmpty) {
-                throw StateError('No accounts available');
+          if (selectedBankFilter == CashConstants.bankId) {
+            periodFiltered = periodFiltered
+                .where((t) => t.bankId == CashConstants.bankId)
+                .toList();
+          } else {
+            final account = accounts.firstWhere(
+              (a) =>
+                  a.accountNumber == selectedAccountFilter &&
+                  a.bankId == selectedBankFilter,
+              orElse: () => accounts.firstWhere(
+                (a) => a.bankId == selectedBankFilter,
+                orElse: () {
+                  if (accounts.isEmpty) {
+                    throw StateError('No accounts available');
+                  }
+                  return accounts.first;
+                },
+              ),
+            );
+            final bank = banks.firstWhere(
+              (b) => b.id == account.bankId,
+              orElse: () => Bank(
+                id: account.bankId,
+                name: '',
+                shortName: '',
+                codes: const [],
+                image: '',
+              ),
+            );
+            periodFiltered = periodFiltered.where((t) {
+              if (bank.uniformMasking == true &&
+                  bank.maskPattern != null &&
+                  t.accountNumber != null &&
+                  account.accountNumber.length >= bank.maskPattern! &&
+                  t.accountNumber!.length >= bank.maskPattern!) {
+                return t.accountNumber!.substring(
+                        t.accountNumber!.length - bank.maskPattern!) ==
+                    account.accountNumber.substring(
+                        account.accountNumber.length - bank.maskPattern!);
+              } else {
+                return t.bankId == account.bankId;
               }
-              return accounts.first;
-            }),
-          );
-          final bank = banks.firstWhere((b) => b.id == account.bankId);
-          periodFiltered = periodFiltered.where((t) {
-            if (bank.uniformMasking == true &&
-                bank.maskPattern != null &&
-                t.accountNumber != null &&
-                account.accountNumber.length >= bank.maskPattern! &&
-                t.accountNumber!.length >= bank.maskPattern!) {
-              return t.accountNumber!
-                      .substring(t.accountNumber!.length - bank.maskPattern!) ==
-                  account.accountNumber.substring(
-                      account.accountNumber.length - bank.maskPattern!);
-            } else {
-              return t.bankId == account.bankId;
-            }
-          }).toList();
+            }).toList();
+          }
         }
 
         // Calculate income and expenses for the period
