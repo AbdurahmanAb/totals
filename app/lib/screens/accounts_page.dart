@@ -5,6 +5,8 @@ import 'package:totals/data/all_banks_from_assets.dart';
 import 'package:totals/models/bank.dart';
 import 'package:totals/models/user_account.dart';
 import 'package:totals/widgets/add_user_account_form.dart';
+import 'package:totals/screens/account_share_qr_page.dart';
+import 'package:totals/screens/account_share_scan_page.dart';
 
 class AccountsPage extends StatefulWidget {
   const AccountsPage({super.key});
@@ -187,6 +189,25 @@ class _AccountsPageState extends State<AccountsPage> {
     }
   }
 
+  Future<void> _openShareQr() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const AccountShareQrPage(),
+      ),
+    );
+  }
+
+  Future<void> _openScanQr() async {
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const AccountShareScanPage(),
+      ),
+    );
+    if (result == true) {
+      await _loadData();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -202,6 +223,13 @@ class _AccountsPageState extends State<AccountsPage> {
         centerTitle: true,
         elevation: 0,
         scrolledUnderElevation: 0,
+        actions: [
+          IconButton(
+            tooltip: 'Share accounts',
+            icon: const Icon(Icons.qr_code_rounded),
+            onPressed: _openShareQr,
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -251,11 +279,11 @@ class _AccountsPageState extends State<AccountsPage> {
                               size: 64,
                               color: colorScheme.onSurfaceVariant,
                             ),
-                            const SizedBox(height: 16),
-                            Text(
-                              _searchQuery.isNotEmpty
-                                  ? 'No accounts found'
-                                  : 'No accounts yet',
+                          const SizedBox(height: 16),
+                          Text(
+                            _searchQuery.isNotEmpty
+                                ? 'No accounts found'
+                                : 'No accounts yet',
                               style: theme.textTheme.titleLarge?.copyWith(
                                 color: colorScheme.onSurfaceVariant,
                               ),
@@ -266,6 +294,15 @@ class _AccountsPageState extends State<AccountsPage> {
                                 'Tap + to add your first account',
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            if (_searchQuery.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 16),
+                                child: OutlinedButton.icon(
+                                  onPressed: _openScanQr,
+                                  icon: const Icon(Icons.qr_code_scanner),
+                                  label: const Text('Scan account QR'),
                                 ),
                               ),
                           ],
@@ -292,9 +329,21 @@ class _AccountsPageState extends State<AccountsPage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddAccountDialog,
-        child: const Icon(Icons.add),
+      floatingActionButton: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton(
+            heroTag: 'scan-accounts-fab',
+            onPressed: _openScanQr,
+            child: const Icon(Icons.camera_alt),
+          ),
+          const SizedBox(width: 12),
+          FloatingActionButton(
+            heroTag: 'add-account-fab',
+            onPressed: _showAddAccountDialog,
+            child: const Icon(Icons.add),
+          ),
+        ],
       ),
     );
   }
