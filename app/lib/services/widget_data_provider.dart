@@ -28,7 +28,15 @@ class WidgetDataProvider {
 
   /// Format amount for widget display
   String formatAmountForWidget(double amount) {
-    return '${formatNumberWithComma(amount)} ETB';
+    if (amount.abs() >= 1000) {
+      final abbreviated = formatNumberAbbreviated(amount).replaceAll(' ', '');
+      return '$abbreviated ETB';
+    }
+
+    final rounded = amount.roundToDouble();
+    final formatted =
+        formatNumberWithComma(rounded).replaceFirst(RegExp(r'\.00$'), '');
+    return '$formatted ETB';
   }
 
   /// Get formatted timestamp
