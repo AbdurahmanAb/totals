@@ -12,6 +12,7 @@ import 'package:totals/services/budget_alert_service.dart';
 import 'package:totals/services/receiver_category_service.dart';
 import 'package:totals/services/notification_settings_service.dart';
 import 'package:totals/services/telebirr_bank_transfer_service.dart';
+import 'package:totals/services/widget_service.dart';
 
 class TransactionProvider with ChangeNotifier {
   final TransactionRepository _transactionRepo = TransactionRepository();
@@ -415,6 +416,7 @@ class TransactionProvider with ChangeNotifier {
     // This logic was in onBackgroundMessage, we should probably centralize it here or in a Service
     // For now, simpler to just reload everything
     await loadData();
+    await WidgetService.refreshWidget();
     // Check budget alerts after adding transaction (only for DEBIT transactions)
     if (t.type == 'DEBIT') {
       try {
@@ -457,6 +459,7 @@ class TransactionProvider with ChangeNotifier {
     }
 
     await loadData();
+    await WidgetService.refreshWidget();
     // Check budget alerts after categorizing transaction (only for DEBIT transactions)
     // Only check budgets for the specific category that was selected
     if (transaction.type == 'DEBIT' && category.id != null) {
@@ -476,12 +479,14 @@ class TransactionProvider with ChangeNotifier {
       skipAutoCategorization: true,
     );
     await loadData();
+    await WidgetService.refreshWidget();
   }
 
   Future<void> deleteTransactionsByReferences(
       Iterable<String> references) async {
     await _transactionRepo.deleteTransactionsByReferences(references);
     await loadData();
+    await WidgetService.refreshWidget();
   }
 
   Future<void> createCategory({

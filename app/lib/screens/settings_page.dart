@@ -16,6 +16,7 @@ import 'package:totals/screens/profile_management_page.dart';
 import 'package:totals/screens/telebirr_bank_transfer_matches_page.dart';
 import 'package:totals/repositories/profile_repository.dart';
 import 'package:totals/services/notification_settings_service.dart';
+import 'package:totals/services/widget_service.dart';
 
 Future<void> _openSupportLink() async {
   final uri = Uri.parse('https://jami.bio/detached');
@@ -96,6 +97,7 @@ class _SettingsPageState extends State<SettingsPage>
   final ProfileRepository _profileRepo = ProfileRepository();
   bool _isExporting = false;
   bool _isImporting = false;
+  bool _isRefreshingWidget = false;
   bool _autoCategorizeEnabled = false;
   bool _isLoadingAutoCategorize = true;
 
@@ -608,6 +610,29 @@ class _SettingsPageState extends State<SettingsPage>
     }
   }
 
+  Future<void> _refreshWidget() async {
+    if (_isRefreshingWidget) return;
+    setState(() => _isRefreshingWidget = true);
+    try {
+      await WidgetService.refreshWidget();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Widget refreshed')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Widget refresh failed: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isRefreshingWidget = false);
+      }
+    }
+  }
+
   String _getProfileInitials(String profileName) {
     if (profileName.isEmpty) return 'U';
     final parts = profileName.trim().split(' ');
@@ -789,6 +814,23 @@ class _SettingsPageState extends State<SettingsPage>
                                     )
                                   : null,
                               onTap: _isImporting ? null : _importData,
+                            ),
+                            _buildDivider(context),
+                            _buildSettingTile(
+                              icon: Icons.refresh_rounded,
+                              title: 'Refresh widget',
+                              trailing: _isRefreshingWidget
+                                  ? SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                    )
+                                  : null,
+                              onTap:
+                                  _isRefreshingWidget ? null : _refreshWidget,
                             ),
                           ],
                         ),
