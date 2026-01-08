@@ -12,6 +12,7 @@ import 'package:totals/repositories/profile_repository.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:totals/background/daily_spending_worker.dart';
 import 'package:totals/services/notification_scheduler.dart';
+import 'package:totals/services/widget_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +23,9 @@ void main() async {
   // Initialize default profile if none exists
   final profileRepo = ProfileRepository();
   await profileRepo.initializeDefaultProfile();
+
+  // Initialize home widget
+  await WidgetService.initialize();
 
   if (!kIsWeb) {
     try {
