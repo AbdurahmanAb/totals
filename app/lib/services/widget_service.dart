@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:home_widget/home_widget.dart';
 import 'package:totals/services/widget_data_provider.dart';
 
@@ -23,10 +25,33 @@ class WidgetService {
       final todaySpending = await dataProvider.getTodaySpending();
       final formattedAmount = dataProvider.formatAmountForWidget(todaySpending);
       final lastUpdated = dataProvider.getLastUpdatedTimestamp();
+      final categories = await dataProvider.getTodayCategoryBreakdown();
 
       await HomeWidget.saveWidgetData<String>('expense_total', formattedAmount);
       await HomeWidget.saveWidgetData<String>(
           'expense_last_updated', lastUpdated);
+
+      final categoryJson =
+          jsonEncode(categories.map((c) => c.toJson()).toList());
+      await HomeWidget.saveWidgetData<String>(
+          'expense_categories', categoryJson);
+
+      for (int i = 0; i < 3; i++) {
+        if (i < categories.length) {
+          final cat = categories[i];
+          await HomeWidget.saveWidgetData<String>(
+              'category_${i}_name', cat.name);
+          await HomeWidget.saveWidgetData<String>(
+              'category_${i}_amount',
+              dataProvider.formatAmountForWidget(cat.amount));
+          await HomeWidget.saveWidgetData<String>(
+              'category_${i}_color', cat.colorHex);
+        } else {
+          await HomeWidget.saveWidgetData<String>('category_${i}_name', '');
+          await HomeWidget.saveWidgetData<String>('category_${i}_amount', '');
+          await HomeWidget.saveWidgetData<String>('category_${i}_color', '');
+        }
+      }
       await HomeWidget.updateWidget(androidName: androidWidgetName);
 
       print('Widget updated: $formattedAmount at $lastUpdated');

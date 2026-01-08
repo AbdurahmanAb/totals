@@ -2,35 +2,209 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
+    android:orientation="horizontal"
     android:padding="16dp"
     android:background="@drawable/widget_background">
 
-    <TextView
-        android:id="@+id/widget_title"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="Today's Spending"
-        android:textColor="#AAAAAA"
-        android:textSize="14sp" />
+        android:layout_weight="1"
+        android:orientation="vertical">
 
-    <TextView
-        android:id="@+id/expense_total"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="0 ETB"
-        android:textColor="#FFFFFF"
-        android:textSize="32sp"
-        android:textStyle="bold"
-        android:layout_marginTop="4dp" />
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Today's Spending"
+            android:textColor="#AAAAAA"
+            android:textSize="14sp" />
 
-    <TextView
-        android:id="@+id/last_updated"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="--"
-        android:textColor="#888888"
-        android:textSize="12sp"
-        android:layout_marginTop="8dp" />
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+
+            <TextView
+                android:id="@+id/expense_total_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0"
+                android:textColor="#FFFFFF"
+                android:textSize="36sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/expense_total_currency"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=" ETB"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:layout_gravity="bottom"
+                android:layout_marginBottom="6dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1.2"
+        android:orientation="vertical"
+        android:gravity="end">
+
+        <LinearLayout
+            android:id="@+id/category_bar"
+            android:layout_width="match_parent"
+            android:layout_height="8dp"
+            android:layout_marginBottom="8dp"
+            android:orientation="horizontal"
+            android:background="@drawable/category_bar_background">
+
+            <ImageView
+                android:id="@+id/category_bar_0"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="#4CAF50" />
+
+            <ImageView
+                android:id="@+id/category_bar_1"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="#2196F3" />
+
+            <ImageView
+                android:id="@+id/category_bar_2"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="#FF9800" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/category_row_0"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/category_dot_0"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:src="@drawable/category_dot" />
+
+            <TextView
+                android:id="@+id/category_name_0"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="Category"
+                android:textColor="#CCCCCC"
+                android:textSize="12sp"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/category_amount_0"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0 ETB"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/category_row_1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="4dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/category_dot_1"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:src="@drawable/category_dot" />
+
+            <TextView
+                android:id="@+id/category_name_1"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="Category"
+                android:textColor="#CCCCCC"
+                android:textSize="12sp"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/category_amount_1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0 ETB"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/category_row_2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="4dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/category_dot_2"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:src="@drawable/category_dot" />
+
+            <TextView
+                android:id="@+id/category_name_2"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="Category"
+                android:textColor="#CCCCCC"
+                android:textSize="12sp"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/category_amount_2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0 ETB"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/last_updated"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginTop="8dp"
+            android:text="--"
+            android:textColor="#666666"
+            android:textSize="10sp"
+            android:drawableEnd="@drawable/ic_refresh"
+            android:drawablePadding="4dp" />
+
+    </LinearLayout>
 
 </LinearLayout>
