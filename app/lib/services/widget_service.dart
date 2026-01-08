@@ -29,6 +29,8 @@ class WidgetService {
 
       await HomeWidget.saveWidgetData<String>('expense_total', formattedAmount);
       await HomeWidget.saveWidgetData<String>(
+          'expense_total_raw', todaySpending.toString());
+      await HomeWidget.saveWidgetData<String>(
           'expense_last_updated', lastUpdated);
 
       final categoryJson =
@@ -45,10 +47,13 @@ class WidgetService {
               'category_${i}_amount',
               dataProvider.formatAmountForWidget(cat.amount));
           await HomeWidget.saveWidgetData<String>(
+              'category_${i}_amount_raw', cat.amount.toString());
+          await HomeWidget.saveWidgetData<String>(
               'category_${i}_color', cat.colorHex);
         } else {
           await HomeWidget.saveWidgetData<String>('category_${i}_name', '');
           await HomeWidget.saveWidgetData<String>('category_${i}_amount', '');
+          await HomeWidget.saveWidgetData<String>('category_${i}_amount_raw', '0');
           await HomeWidget.saveWidgetData<String>('category_${i}_color', '');
         }
       }

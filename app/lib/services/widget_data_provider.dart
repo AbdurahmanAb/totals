@@ -28,20 +28,11 @@ class WidgetDataProvider {
   final TransactionRepository _transactionRepository;
   final CategoryRepository _categoryRepository;
 
-  static const Map<String, String> _categoryColors = {
-    'groceries': '#4CAF50',
-    'transport': '#2196F3',
-    'eating_outside': '#FF9800',
-    'utilities': '#9C27B0',
-    'health': '#F44336',
-    'rent': '#607D8B',
-    'airtime': '#00BCD4',
-    'clothing': '#E91E63',
-    'gifts_given': '#8BC34A',
-    'beauty': '#FF5722',
-    'loan': '#795548',
-    'uncategorized': '#9E9E9E',
-  };
+  static const List<String> _rankColors = [
+    '#5AC8FA',
+    '#FFB347',
+    '#FF5D73',
+  ];
 
   WidgetDataProvider({
     TransactionRepository? transactionRepository,
@@ -74,14 +65,17 @@ class WidgetDataProvider {
     final sortedEntries = categoryTotals.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    return sortedEntries.take(3).map((entry) {
-      final category = categoryMap[entry.key];
-      final builtInKey = category?.builtInKey ?? 'uncategorized';
+    final topEntries = sortedEntries.take(3).toList();
+    return topEntries.asMap().entries.map((entry) {
+      final rank = entry.key;
+      final categoryEntry = entry.value;
+      final category = categoryMap[categoryEntry.key];
+      final colorHex = _rankColors[rank % _rankColors.length];
       return CategoryExpense(
-        categoryId: entry.key,
+        categoryId: categoryEntry.key,
         name: category?.name ?? 'Uncategorized',
-        amount: entry.value,
-        colorHex: _categoryColors[builtInKey] ?? '#9E9E9E',
+        amount: categoryEntry.value,
+        colorHex: colorHex,
       );
     }).toList();
   }
@@ -127,3 +121,6 @@ class WidgetDataProvider {
     return '$month/$day, $hour:$minute';
   }
 }
+
+
+
