@@ -7,9 +7,12 @@ import 'package:workmanager/workmanager.dart';
 import 'package:totals/repositories/transaction_repository.dart';
 import 'package:totals/services/notification_service.dart';
 import 'package:totals/services/notification_settings_service.dart';
+import 'package:totals/services/widget_service.dart';
 
 const String dailySpendingSummaryTask = 'dailySpendingSummary';
 const String dailySpendingSummaryUniqueName = 'dailySpendingSummaryUnique';
+const String widgetMidnightRefreshTask = 'widgetMidnightRefresh';
+const String widgetMidnightRefreshUniqueName = 'widgetMidnightRefreshUnique';
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -17,6 +20,12 @@ void callbackDispatcher() {
     try {
       WidgetsFlutterBinding.ensureInitialized();
       DartPluginRegistrant.ensureInitialized();
+
+      if (task == widgetMidnightRefreshTask) {
+        await WidgetService.initialize();
+        await WidgetService.refreshWidget();
+        return true;
+      }
 
       if (task != dailySpendingSummaryTask) return true;
 
