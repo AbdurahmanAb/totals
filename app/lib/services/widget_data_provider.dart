@@ -1,6 +1,10 @@
+import 'package:totals/constants/cash_constants.dart';
 import 'package:totals/models/category.dart';
+import 'package:totals/models/transaction.dart';
 import 'package:totals/repositories/category_repository.dart';
 import 'package:totals/repositories/transaction_repository.dart';
+import 'package:totals/services/bank_config_service.dart';
+import 'package:totals/services/telebirr_bank_transfer_service.dart';
 import 'package:totals/utils/text_utils.dart';
 
 class CategoryExpense {
@@ -27,6 +31,8 @@ class CategoryExpense {
 class WidgetDataProvider {
   final TransactionRepository _transactionRepository;
   final CategoryRepository _categoryRepository;
+  final BankConfigService _bankConfigService;
+  final TelebirrBankTransferService _telebirrMatchService;
 
   static const List<String> _rankColors = [
     '#5AC8FA',
@@ -37,12 +43,17 @@ class WidgetDataProvider {
   WidgetDataProvider({
     TransactionRepository? transactionRepository,
     CategoryRepository? categoryRepository,
+    BankConfigService? bankConfigService,
+    TelebirrBankTransferService? telebirrMatchService,
   })
       : _transactionRepository =
             transactionRepository ?? TransactionRepository(),
-        _categoryRepository = categoryRepository ?? CategoryRepository();
+        _categoryRepository = categoryRepository ?? CategoryRepository(),
+        _bankConfigService = bankConfigService ?? BankConfigService(),
+        _telebirrMatchService =
+            telebirrMatchService ?? TelebirrBankTransferService();
 
-  Future<List<CategoryExpense>> getTodayCategoryBreakdown() async {
+  Future<List<Transaction>> _getTodayDebitTransactions() async {
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day);
     final endOfDay = startOfDay.add(const Duration(days: 1));
@@ -53,6 +64,63 @@ class WidgetDataProvider {
       type: 'DEBIT',
     );
 
+    return _filterOutSelfTransfers(transactions);
+  }
+
+  Future<List<Transaction>> _filterOutSelfTransfers(
+    List<Transaction> transactions,
+  ) async {
+    if (transactions.isEmpty) return transactions;
+    final allTransactions = await _transactionRepository.getTransactions();
+    final toSelfReferences =
+        await _buildSelfTransferToReferences(allTransactions);
+    if (toSelfReferences.isEmpty) return transactions;
+
+    return transactions
+        .where((transaction) =>
+            !toSelfReferences.contains(transaction.reference))
+        .toList();
+  }
+
+  Future<Set<String>> _buildSelfTransferToReferences(
+    List<Transaction> transactions,
+  ) async {
+    if (transactions.isEmpty) return <String>{};
+    final banks = await _bankConfigService.getBanks();
+    final matches = _telebirrMatchService.findMatches(transactions, banks);
+    final toSelfReferences = <String>{};
+
+    for (final match in matches) {
+      toSelfReferences.add(match.bankTransaction.reference);
+    }
+    toSelfReferences.addAll(_buildCashTransferToReferences(transactions));
+    return toSelfReferences;
+  }
+
+  Set<String> _buildCashTransferToReferences(
+    List<Transaction> transactions,
+  ) {
+    final toSelfReferences = <String>{};
+    final byReference = {
+      for (final transaction in transactions) transaction.reference: transaction,
+    };
+
+    for (final transaction in transactions) {
+      if (transaction.bankId != CashConstants.bankId) continue;
+      final reference = transaction.reference;
+      if (!reference.startsWith(CashConstants.atmReferencePrefix)) continue;
+
+      final linkedReference =
+          reference.substring(CashConstants.atmReferencePrefix.length);
+      if (!byReference.containsKey(linkedReference)) continue;
+      toSelfReferences.add(linkedReference);
+    }
+
+    return toSelfReferences;
+  }
+
+  Future<List<CategoryExpense>> getTodayCategoryBreakdown() async {
+    final transactions = await _getTodayDebitTransactions();
     final categories = await _categoryRepository.getCategories();
     final categoryMap = {for (final c in categories) c.id: c};
 
@@ -82,15 +150,7 @@ class WidgetDataProvider {
 
   /// Get today's total spending (DEBIT transactions only)
   Future<double> getTodaySpending() async {
-    final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day);
-    final endOfDay = startOfDay.add(const Duration(days: 1));
-
-    final transactions = await _transactionRepository.getTransactionsByDateRange(
-      startOfDay,
-      endOfDay,
-      type: 'DEBIT',
-    );
+    final transactions = await _getTodayDebitTransactions();
 
     return transactions.fold<double>(
       0.0,
