@@ -1,11 +1,12 @@
 buildscript {
-    ext.kotlin_version = '1.8.10'
+    ext.kotlin_version = '2.2.0'
     repositories {
         google()
         mavenCentral()
     }
 
     dependencies {
+        classpath 'com.android.tools.build:gradle:8.6.0'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
@@ -14,14 +15,6 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-    }
-    configurations.all {
-        resolutionStrategy {
-            force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.10'
-            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.10'
-            force 'androidx.window:window:1.0.0'
-            force 'androidx.window:window-java:1.0.0'
-        }
     }
 }
 

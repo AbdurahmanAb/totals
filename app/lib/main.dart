@@ -12,6 +12,8 @@ import 'package:totals/repositories/profile_repository.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:totals/background/daily_spending_worker.dart';
 import 'package:totals/services/notification_scheduler.dart';
+import 'package:totals/services/widget_service.dart';
+import 'package:totals/services/widget_refresh_scheduler.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +25,9 @@ void main() async {
   final profileRepo = ProfileRepository();
   await profileRepo.initializeDefaultProfile();
 
+  // Initialize home widget
+  await WidgetService.initialize();
+
   if (!kIsWeb) {
     try {
       await Workmanager().initialize(
@@ -31,6 +36,7 @@ void main() async {
         isInDebugMode: false,
       );
       await NotificationScheduler.syncDailySummarySchedule();
+      await WidgetRefreshScheduler.syncWidgetRefreshSchedule();
     } catch (e) {
       // Ignore if not supported on the current platform.
       if (kDebugMode) {

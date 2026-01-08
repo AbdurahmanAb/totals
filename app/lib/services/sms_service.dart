@@ -15,6 +15,7 @@ import 'package:flutter/widgets.dart';
 import 'package:totals/services/notification_service.dart';
 import 'package:totals/services/budget_alert_service.dart';
 import 'package:totals/constants/cash_constants.dart';
+import 'package:totals/services/widget_service.dart';
 
 enum ParseStatus {
   success,
@@ -541,6 +542,12 @@ class SmsService {
       } catch (e) {
         print("debug: Error checking budget alerts after SMS transaction: $e");
       }
+    }
+
+    try {
+      await WidgetService.refreshWidget();
+    } catch (e) {
+      print("debug: Error refreshing widget after SMS transaction: $e");
     }
 
     return ParseResult(
