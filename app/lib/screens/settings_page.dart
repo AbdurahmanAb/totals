@@ -13,7 +13,7 @@ import 'package:totals/screens/categories_page.dart';
 import 'package:totals/screens/notification_settings_page.dart';
 import 'package:totals/widgets/clear_database_dialog.dart';
 import 'package:totals/screens/profile_management_page.dart';
-import 'package:totals/screens/telebirr_bank_transfer_matches_page.dart';
+// import 'package:totals/screens/telebirr_bank_transfer_matches_page.dart';
 import 'package:totals/repositories/profile_repository.dart';
 import 'package:totals/services/notification_settings_service.dart';
 import 'package:totals/services/widget_service.dart';
@@ -633,6 +633,7 @@ class _SettingsPageState extends State<SettingsPage>
     }
   }
 
+
   String _getProfileInitials(String profileName) {
     if (profileName.isEmpty) return 'U';
     final parts = profileName.trim().split(' ');
@@ -771,6 +772,7 @@ class _SettingsPageState extends State<SettingsPage>
                               },
                             ),
                             _buildDivider(context),
+                            /*
                             _buildSettingTile(
                               icon: Icons.swap_horiz_rounded,
                               title: 'Telebirr bank matches',
@@ -784,6 +786,7 @@ class _SettingsPageState extends State<SettingsPage>
                               },
                             ),
                             _buildDivider(context),
+                            */
                             _buildSettingTile(
                               icon: Icons.upload_rounded,
                               title: 'Export Data',
@@ -815,6 +818,7 @@ class _SettingsPageState extends State<SettingsPage>
                                   : null,
                               onTap: _isImporting ? null : _importData,
                             ),
+                            /*
                             _buildDivider(context),
                             _buildSettingTile(
                               icon: Icons.refresh_rounded,
@@ -832,8 +836,9 @@ class _SettingsPageState extends State<SettingsPage>
                               onTap:
                                   _isRefreshingWidget ? null : _refreshWidget,
                             ),
-                          ],
-                        ),
+                            */
+                            ],
+                          ),
                         const SizedBox(height: 24),
 
                         // Section: Support

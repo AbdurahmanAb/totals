@@ -99,14 +99,6 @@ class _AccountShareQrPageState extends State<AccountShareQrPage> {
     }
   }
 
-  Map<int, List<Account>> _groupAccountsByBank() {
-    final grouped = <int, List<Account>>{};
-    for (final account in _accounts) {
-      grouped.putIfAbsent(account.bank, () => <Account>[]).add(account);
-    }
-    return grouped;
-  }
-
   void _updateDisplayNameFromSelection() {
     // Only update if display name is empty
     if (_displayNameController.text.isEmpty) {
@@ -155,18 +147,6 @@ class _AccountShareQrPageState extends State<AccountShareQrPage> {
   void _clearAllAccounts() {
     setState(() {
       _selectedKeys.clear();
-    });
-  }
-
-  void _toggleBankSelection(List<Account> accounts, bool selectAll) {
-    setState(() {
-      if (selectAll) {
-        _selectedKeys.addAll(accounts.map(_accountKey));
-      } else {
-        for (final account in accounts) {
-          _selectedKeys.remove(_accountKey(account));
-        }
-      }
     });
   }
 
@@ -243,12 +223,13 @@ class _AccountShareQrPageState extends State<AccountShareQrPage> {
     final colorScheme = theme.colorScheme;
     final payload = _buildPayload();
     final qrData = payload == null ? null : AccountSharePayload.encode(payload);
-    final groupedAccounts = _groupAccountsByBank();
-    final groupedKeys = groupedAccounts.keys.toList()
+    final sortedAccounts = List<Account>.from(_accounts)
       ..sort((a, b) {
-        final nameA = _getBankInfo(a)?.name ?? '';
-        final nameB = _getBankInfo(b)?.name ?? '';
-        return nameA.compareTo(nameB);
+        final nameA = _getBankInfo(a.bank)?.name ?? '';
+        final nameB = _getBankInfo(b.bank)?.name ?? '';
+        final bankCompare = nameA.compareTo(nameB);
+        if (bankCompare != 0) return bankCompare;
+        return a.accountNumber.compareTo(b.accountNumber);
       });
 
     return Scaffold(
@@ -330,23 +311,15 @@ class _AccountShareQrPageState extends State<AccountShareQrPage> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      for (final bankId in groupedKeys) ...[
-                        _BankSectionHeader(
-                          bank: _getBankInfo(bankId),
-                          accounts: groupedAccounts[bankId] ?? const [],
-                          selectedKeys: _selectedKeys,
-                          onToggle: _toggleBankSelection,
+                      for (final account in sortedAccounts) ...[
+                        _AccountShareTile(
+                          account: account,
+                          bank: _getBankInfo(account.bank),
+                          isSelected:
+                              _selectedKeys.contains(_accountKey(account)),
+                          onChanged: (value) => _toggleAccount(account, value),
                         ),
-                        const SizedBox(height: 8),
-                        for (final account in groupedAccounts[bankId] ?? const [])
-                          _AccountShareTile(
-                            account: account,
-                            bank: _getBankInfo(account.bank),
-                            isSelected:
-                                _selectedKeys.contains(_accountKey(account)),
-                            onChanged: (value) => _toggleAccount(account, value),
-                          ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                       ],
                     ],
                   ),
@@ -599,49 +572,6 @@ class _QrPreviewCard extends StatelessWidget {
   }
 }
 
-class _BankSectionHeader extends StatelessWidget {
-  final Bank? bank;
-  final List<Account> accounts;
-  final Set<String> selectedKeys;
-  final void Function(List<Account> accounts, bool selectAll) onToggle;
-
-  const _BankSectionHeader({
-    required this.bank,
-    required this.accounts,
-    required this.selectedKeys,
-    required this.onToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final bankName = bank?.shortName ?? bank?.name ?? 'Bank';
-    bool isSelected(Account account) {
-      return selectedKeys.contains('${account.bank}:${account.accountNumber}');
-    }
-
-    final allSelected = accounts.every(isSelected);
-
-    return Row(
-      children: [
-        Text(
-          bankName,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: colorScheme.onSurface,
-          ),
-        ),
-        const Spacer(),
-        TextButton(
-          onPressed: () => onToggle(accounts, !allSelected),
-          child: Text(allSelected ? 'Clear bank' : 'Select bank'),
-        ),
-      ],
-    );
-  }
-}
-
 class _AccountShareTile extends StatelessWidget {
   final Account account;
   final Bank? bank;
@@ -693,14 +623,16 @@ class _AccountShareTile extends StatelessWidget {
               ),
       ),
       title: Text(
-        bank?.shortName ?? bank?.name ?? 'Unknown Bank',
+        account.accountNumber.isNotEmpty
+            ? account.accountNumber
+            : 'Account',
         style: theme.textTheme.titleSmall?.copyWith(
           fontWeight: FontWeight.w600,
           color: colorScheme.onSurface,
         ),
       ),
       subtitle: Text(
-        account.accountNumber,
+        bank?.shortName ?? bank?.name ?? 'Unknown Bank',
         style: theme.textTheme.bodySmall?.copyWith(
           color: colorScheme.onSurfaceVariant,
         ),
