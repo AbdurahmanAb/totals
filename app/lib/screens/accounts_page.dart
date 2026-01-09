@@ -22,6 +22,7 @@ class _AccountsPageState extends State<AccountsPage> {
   List<UserAccount> _userAccounts = [];
   String _searchQuery = '';
   bool _isLoading = true;
+  Set<String> _selectedKeys = {};
 
   @override
   void initState() {
@@ -54,6 +55,8 @@ class _AccountsPageState extends State<AccountsPage> {
       if (mounted) {
         setState(() {
           _userAccounts = accounts;
+          final accountKeys = accounts.map(_accountKey).toSet();
+          _selectedKeys = _selectedKeys.intersection(accountKeys);
           _isLoading = false;
         });
       }
@@ -75,6 +78,10 @@ class _AccountsPageState extends State<AccountsPage> {
     }
   }
 
+  String _accountKey(UserAccount account) {
+    return '${account.bankId}:${account.accountNumber}';
+  }
+
   List<UserAccount> _filterAccounts(List<UserAccount> accounts) {
     if (_searchQuery.isEmpty) return accounts;
     return accounts.where((account) {
@@ -89,6 +96,37 @@ class _AccountsPageState extends State<AccountsPage> {
           bankName.contains(query) ||
           bankShortName.contains(query);
     }).toList();
+  }
+
+  bool get _isSelectionMode => _selectedKeys.isNotEmpty;
+
+  List<UserAccount> get _selectedAccounts {
+    return _userAccounts
+        .where((account) => _selectedKeys.contains(_accountKey(account)))
+        .toList();
+  }
+
+  void _toggleSelection(UserAccount account) {
+    final key = _accountKey(account);
+    setState(() {
+      if (_selectedKeys.contains(key)) {
+        _selectedKeys.remove(key);
+      } else {
+        _selectedKeys.add(key);
+      }
+    });
+  }
+
+  void _clearSelection() {
+    setState(() {
+      _selectedKeys.clear();
+    });
+  }
+
+  void _selectAll(List<UserAccount> accounts) {
+    setState(() {
+      _selectedKeys = accounts.map(_accountKey).toSet();
+    });
   }
 
   Future<void> _copyAccountNumber(String accountNumber) async {
@@ -131,14 +169,16 @@ class _AccountsPageState extends State<AccountsPage> {
     );
   }
 
-  Future<void> _confirmDeleteAccount(UserAccount account) async {
+  Future<void> _confirmDeleteSelected() async {
+    final selected = _selectedAccounts;
+    if (selected.isEmpty) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Delete Account?'),
+          title: const Text('Delete Selected Accounts?'),
           content: Text(
-            'Are you sure you want to delete account ${account.accountNumber}?',
+            'Are you sure you want to delete ${selected.length} account${selected.length == 1 ? '' : 's'}?',
           ),
           actions: [
             TextButton(
@@ -159,19 +199,24 @@ class _AccountsPageState extends State<AccountsPage> {
 
     if (confirmed == true && mounted) {
       try {
-        if (account.id != null) {
-          await _userAccountRepo.deleteUserAccount(account.id!);
-        } else {
-          await _userAccountRepo.deleteUserAccountByNumberAndBank(
-            account.accountNumber,
-            account.bankId,
-          );
+        for (final account in selected) {
+          if (account.id != null) {
+            await _userAccountRepo.deleteUserAccount(account.id!);
+          } else {
+            await _userAccountRepo.deleteUserAccountByNumberAndBank(
+              account.accountNumber,
+              account.bankId,
+            );
+          }
         }
+        _clearSelection();
         await _loadData();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Account deleted successfully'),
+            SnackBar(
+              content: Text(
+                'Deleted ${selected.length} account${selected.length == 1 ? '' : 's'}',
+              ),
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -180,7 +225,7 @@ class _AccountsPageState extends State<AccountsPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error deleting account: $e'),
+              content: Text('Error deleting accounts: $e'),
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -219,17 +264,47 @@ class _AccountsPageState extends State<AccountsPage> {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: theme.scaffoldBackgroundColor,
-        title: const Text('Quick Access Accounts'),
+        leading: _isSelectionMode
+            ? IconButton(
+                tooltip: 'Clear selection',
+                icon: const Icon(Icons.close),
+                onPressed: _clearSelection,
+              )
+            : null,
+        title: Text(
+          _isSelectionMode
+              ? '${_selectedKeys.length} selected'
+              : 'Quick Access Accounts',
+        ),
         centerTitle: true,
         elevation: 0,
         scrolledUnderElevation: 0,
-        actions: [
-          IconButton(
-            tooltip: 'Share accounts',
-            icon: const Icon(Icons.qr_code_rounded),
-            onPressed: _openShareQr,
-          ),
-        ],
+        actions: _isSelectionMode
+            ? [
+                IconButton(
+                  tooltip: 'Clear selection',
+                  icon: const Icon(Icons.clear_all),
+                  onPressed: _clearSelection,
+                ),
+                IconButton(
+                  tooltip: 'Select all',
+                  icon: const Icon(Icons.select_all),
+                  onPressed: () => _selectAll(filteredAccounts),
+                ),
+                IconButton(
+                  tooltip: 'Delete selected',
+                  icon: const Icon(Icons.delete_outline),
+                  color: colorScheme.error,
+                  onPressed: _confirmDeleteSelected,
+                ),
+              ]
+            : [
+                IconButton(
+                  tooltip: 'Share accounts',
+                  icon: const Icon(Icons.qr_code_rounded),
+                  onPressed: _openShareQr,
+                ),
+              ],
       ),
       body: Column(
         children: [
@@ -319,9 +394,17 @@ class _AccountsPageState extends State<AccountsPage> {
                             return _AccountCard(
                               account: account,
                               bank: bank,
+                              isSelected: _selectedKeys
+                                  .contains(_accountKey(account)),
+                              isSelectionMode: _isSelectionMode,
+                              onTap: _isSelectionMode
+                                  ? () => _toggleSelection(account)
+                                  : null,
+                              onLongPress: () {
+                                _toggleSelection(account);
+                              },
                               onCopy: () =>
                                   _copyAccountNumber(account.accountNumber),
-                              onDelete: () => _confirmDeleteAccount(account),
                             );
                           },
                         ),
@@ -329,22 +412,24 @@ class _AccountsPageState extends State<AccountsPage> {
           ),
         ],
       ),
-      floatingActionButton: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton(
-            heroTag: 'scan-accounts-fab',
-            onPressed: _openScanQr,
-            child: const Icon(Icons.camera_alt),
-          ),
-          const SizedBox(width: 12),
-          FloatingActionButton(
-            heroTag: 'add-account-fab',
-            onPressed: _showAddAccountDialog,
-            child: const Icon(Icons.add),
-          ),
-        ],
-      ),
+      floatingActionButton: _isSelectionMode
+          ? null
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton(
+                  heroTag: 'scan-accounts-fab',
+                  onPressed: _openScanQr,
+                  child: const Icon(Icons.camera_alt),
+                ),
+                const SizedBox(width: 12),
+                FloatingActionButton(
+                  heroTag: 'add-account-fab',
+                  onPressed: _showAddAccountDialog,
+                  child: const Icon(Icons.add),
+                ),
+              ],
+            ),
     );
   }
 }
@@ -352,14 +437,20 @@ class _AccountsPageState extends State<AccountsPage> {
 class _AccountCard extends StatelessWidget {
   final UserAccount account;
   final Bank? bank;
+  final bool isSelected;
+  final bool isSelectionMode;
+  final VoidCallback? onTap;
+  final VoidCallback onLongPress;
   final VoidCallback onCopy;
-  final VoidCallback onDelete;
 
   const _AccountCard({
     required this.account,
     this.bank,
+    required this.isSelected,
+    required this.isSelectionMode,
+    this.onTap,
+    required this.onLongPress,
     required this.onCopy,
-    required this.onDelete,
   });
 
   @override
@@ -367,55 +458,27 @@ class _AccountCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    final selectionColor = colorScheme.primary;
+
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 8),
+      color: isSelected ? selectionColor.withOpacity(0.06) : null,
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: colorScheme.outline.withOpacity(0.2),
+          color: isSelected
+              ? selectionColor
+              : colorScheme.outline.withOpacity(0.2),
+          width: isSelected ? 1.2 : 1,
         ),
       ),
       child: InkWell(
-        onLongPress: () {
-          showModalBottomSheet(
-            context: context,
-            builder: (context) {
-              return SafeArea(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.copy),
-                      title: const Text('Copy Account Number'),
-                      onTap: () {
-                        Navigator.pop(context);
-                        onCopy();
-                      },
-                    ),
-                    ListTile(
-                      leading: Icon(
-                        Icons.delete,
-                        color: colorScheme.error,
-                      ),
-                      title: Text(
-                        'Delete Account',
-                        style: TextStyle(color: colorScheme.error),
-                      ),
-                      onTap: () {
-                        Navigator.pop(context);
-                        onDelete();
-                      },
-                    ),
-                  ],
-                ),
-              );
-            },
-          );
-        },
+        onTap: onTap,
+        onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -423,8 +486,8 @@ class _AccountCard extends StatelessWidget {
                 children: [
                   // Bank icon
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
                       color: colorScheme.surfaceVariant,
                       borderRadius: BorderRadius.circular(12),
@@ -451,13 +514,13 @@ class _AccountCard extends StatelessWidget {
                             color: colorScheme.onSurfaceVariant,
                           ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          bank?.shortName ?? bank?.name ?? 'Unknown Bank',
+                          account.accountHolderName,
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: colorScheme.onSurface,
@@ -465,32 +528,7 @@ class _AccountCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          account.accountHolderName,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.copy_outlined),
-                    onPressed: onCopy,
-                    tooltip: 'Copy account number',
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Account Number',
+                          bank?.shortName ?? bank?.name ?? 'Unknown Bank',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: colorScheme.onSurfaceVariant,
                           ),
@@ -498,7 +536,7 @@ class _AccountCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           account.accountNumber,
-                          style: theme.textTheme.bodyLarge?.copyWith(
+                          style: theme.textTheme.bodyMedium?.copyWith(
                             color: colorScheme.onSurface,
                             fontFamily: 'monospace',
                             fontWeight: FontWeight.w600,
@@ -507,6 +545,22 @@ class _AccountCard extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (isSelectionMode)
+                    Icon(
+                      isSelected
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      color: isSelected
+                          ? selectionColor
+                          : colorScheme.outline,
+                    )
+                  else
+                    IconButton(
+                      icon: const Icon(Icons.copy_outlined),
+                      onPressed: onCopy,
+                      tooltip: 'Copy account number',
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                 ],
               ),
             ],
