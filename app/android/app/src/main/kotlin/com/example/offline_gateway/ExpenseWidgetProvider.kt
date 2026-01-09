@@ -60,16 +60,26 @@ class ExpenseWidgetProvider : HomeWidgetProvider() {
                 action = ACTION_TOGGLE_VISIBILITY
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
             }
-            val toggleFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val pendingFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             } else {
                 PendingIntent.FLAG_UPDATE_CURRENT
             }
+            val launchIntent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val launchPendingIntent = PendingIntent.getActivity(
+                context,
+                widgetId + 1000,
+                launchIntent,
+                pendingFlags
+            )
+            views.setOnClickPendingIntent(R.id.widget_root, launchPendingIntent)
             val togglePendingIntent = PendingIntent.getBroadcast(
                 context,
                 widgetId,
                 toggleIntent,
-                toggleFlags
+                pendingFlags
             )
             views.setOnClickPendingIntent(R.id.toggle_visibility, togglePendingIntent)
             views.setImageViewResource(
@@ -221,7 +231,9 @@ class ExpenseWidgetProvider : HomeWidgetProvider() {
         val sumTop = amounts.sum()
         var base = if (totalRaw > 0.0) totalRaw else sumTop
         if (base < sumTop) base = sumTop
-        if (base <= 0.0) return null
+        if (base <= 0.0) {
+            return Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
+        }
 
         val bitmap = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
