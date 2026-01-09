@@ -8,6 +8,7 @@ import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:totals/constants/cash_constants.dart';
 import 'package:totals/data/all_banks_from_assets.dart';
 import 'package:totals/models/account.dart';
@@ -26,6 +27,7 @@ class _AccountShareQrPageState extends State<AccountShareQrPage> {
   final AccountRepository _accountRepo = AccountRepository();
   final TextEditingController _displayNameController = TextEditingController();
   final GlobalKey _qrKey = GlobalKey();
+  static const String _sharedNameKey = 'account_share_display_name';
   static const List<Color> _qrPalette = [
     Color(0xFF0D47A1),
     Color(0xFF1565C0),
@@ -49,7 +51,7 @@ class _AccountShareQrPageState extends State<AccountShareQrPage> {
     final random = Random();
     _qrSeed = random.nextInt(0x7fffffff);
     _qrShape = _buildRandomQrShape(random);
-    _loadData();
+    _loadInitialState();
   }
 
   @override
@@ -58,7 +60,11 @@ class _AccountShareQrPageState extends State<AccountShareQrPage> {
     super.dispose();
   }
 
-  @override
+  Future<void> _loadInitialState() async {
+    await _loadSavedDisplayName();
+    await _loadData();
+  }
+
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
@@ -110,6 +116,31 @@ class _AccountShareQrPageState extends State<AccountShareQrPage> {
         }
       }
     }
+  }
+
+  Future<void> _loadSavedDisplayName() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedName = prefs.getString(_sharedNameKey);
+    if (savedName == null || savedName.trim().isEmpty) return;
+    _displayNameController.text = savedName.trim();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _saveDisplayName(String name) async {
+    final trimmed = name.trim();
+    final prefs = await SharedPreferences.getInstance();
+    if (trimmed.isEmpty) {
+      await prefs.remove(_sharedNameKey);
+      return;
+    }
+    await prefs.setString(_sharedNameKey, trimmed);
+  }
+
+  void _handleDisplayNameChanged(String value) {
+    _saveDisplayName(value);
+    setState(() {});
   }
 
   AccountSharePayload? _buildPayload() {
@@ -287,7 +318,7 @@ class _AccountShareQrPageState extends State<AccountShareQrPage> {
                         displayNameController: _displayNameController,
                         colorScheme: colorScheme,
                         qrShape: _qrShape,
-                        onDisplayNameChanged: () => setState(() {}),
+                        onDisplayNameChanged: _handleDisplayNameChanged,
                         onShare: _shareQrCode,
                       ),
                       const SizedBox(height: 24),
@@ -426,7 +457,7 @@ class _QrPreviewCard extends StatelessWidget {
   final TextEditingController displayNameController;
   final ColorScheme colorScheme;
   final PrettyQrShape qrShape;
-  final VoidCallback onDisplayNameChanged;
+  final ValueChanged<String> onDisplayNameChanged;
   final VoidCallback onShare;
 
   const _QrPreviewCard({
@@ -477,7 +508,7 @@ class _QrPreviewCard extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                   color: colorScheme.onSurfaceVariant,
                 ),
-                onChanged: (_) => onDisplayNameChanged(),
+                onChanged: onDisplayNameChanged,
               ),
             ],
           ),

@@ -313,7 +313,7 @@ class _AccountsPageState extends State<AccountsPage> {
             padding: const EdgeInsets.all(16),
             child: TextField(
               controller: _searchController,
-              autofocus: true,
+              autofocus: false,
               decoration: InputDecoration(
                 hintText: 'Search accounts...',
                 prefixIcon: const Icon(Icons.search),
