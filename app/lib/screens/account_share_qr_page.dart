@@ -1,10 +1,12 @@
 import 'dart:io';
+import 'dart:io';
+import 'dart:math';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:qr_flutter/qr_flutter.dart';
+import 'package:pretty_qr_code/pretty_qr_code.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:totals/constants/cash_constants.dart';
 import 'package:totals/data/all_banks_from_assets.dart';
@@ -24,6 +26,17 @@ class _AccountShareQrPageState extends State<AccountShareQrPage> {
   final AccountRepository _accountRepo = AccountRepository();
   final TextEditingController _displayNameController = TextEditingController();
   final GlobalKey _qrKey = GlobalKey();
+  static const List<Color> _qrPalette = [
+    Color(0xFF0D47A1),
+    Color(0xFF1565C0),
+    Color(0xFF1976D2),
+    Color(0xFF1E88E5),
+    Color(0xFF2196F3),
+    Color(0xFF42A5F5),
+    Color(0xFF64B5F6),
+  ];
+  late final int _qrSeed;
+  late final PrettyQrShape _qrShape;
 
   List<Account> _accounts = [];
   List<Bank> _banks = [];
@@ -33,6 +46,9 @@ class _AccountShareQrPageState extends State<AccountShareQrPage> {
   @override
   void initState() {
     super.initState();
+    final random = Random();
+    _qrSeed = random.nextInt(0x7fffffff);
+    _qrShape = _buildRandomQrShape(random);
     _loadData();
   }
 
@@ -181,6 +197,46 @@ class _AccountShareQrPageState extends State<AccountShareQrPage> {
     }
   }
 
+  PrettyQrShape _buildRandomQrShape(Random random) {
+    return PrettyQrShape.custom(
+      _TotalsRandomColorSymbol(
+        palette: _qrPalette,
+        seed: _qrSeed,
+        rounding: 0.2 + random.nextDouble() * 0.6,
+        density: 0.85 + random.nextDouble() * 0.15,
+      ),
+      finderPattern: _randomAccentShape(random),
+      timingPatterns: _randomAccentShape(random),
+      alignmentPatterns: _randomAccentShape(random),
+    );
+  }
+
+  PrettyQrShape _randomAccentShape(Random random) {
+    final pick = random.nextInt(3);
+    final color = _qrPalette[random.nextInt(_qrPalette.length)];
+    switch (pick) {
+      case 0:
+        return PrettyQrSmoothSymbol(
+          color: color,
+          roundFactor: 0.65 + random.nextDouble() * 0.35,
+        );
+      case 1:
+        return PrettyQrSquaresSymbol(
+          color: color,
+          density: 0.85 + random.nextDouble() * 0.15,
+          rounding: 0.2 + random.nextDouble() * 0.7,
+          unifiedFinderPattern: false,
+        );
+      default:
+        return PrettyQrDotsSymbol(
+          color: color,
+          density: 0.85 + random.nextDouble() * 0.15,
+          unifiedFinderPattern: false,
+          unifiedAlignmentPatterns: false,
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -245,6 +301,7 @@ class _AccountShareQrPageState extends State<AccountShareQrPage> {
                       data: qrData,
                       sharedName: _displayNameController.text.trim(),
                       colorScheme: colorScheme,
+                      qrShape: _qrShape,
                       onShare: _shareQrCode,
                     ),
                     const SizedBox(height: 24),
@@ -284,8 +341,7 @@ class _AccountShareQrPageState extends State<AccountShareQrPage> {
                           bank: _getBankInfo(account.bank),
                           isSelected:
                               _selectedKeys.contains(_accountKey(account)),
-                          onChanged: (value) =>
-                              _toggleAccount(account, value),
+                          onChanged: (value) => _toggleAccount(account, value),
                         ),
                       const SizedBox(height: 16),
                     ],
@@ -346,7 +402,96 @@ class _AccountShareQrPageState extends State<AccountShareQrPage> {
       ),
     );
   }
+}
 
+class _TotalsRandomColorSymbol extends PrettyQrShape {
+  final List<Color> palette;
+  final int seed;
+  final double rounding;
+  final double density;
+
+  const _TotalsRandomColorSymbol({
+    required this.palette,
+    required this.seed,
+    this.rounding = 0.35,
+    this.density = 1.0,
+  })  : assert(palette.length > 1),
+        assert(rounding >= 0.0 && rounding <= 1.0),
+        assert(density >= 0.0 && density <= 1.0);
+
+  @override
+  void paint(PrettyQrPaintingContext context) {
+    final matrix = context.matrix;
+    final canvasBounds = context.estimatedBounds;
+    final moduleDimension = canvasBounds.longestSide / matrix.version.dimension;
+
+    final radius = moduleDimension / 2;
+    final effectiveRadius =
+        PrettyQrShape.clampDouble(radius * rounding, 0, radius);
+    final effectiveDensity =
+        radius - PrettyQrShape.clampDouble(radius * density, 1, radius);
+
+    for (final module in matrix) {
+      if (!module.isDark) continue;
+      final moduleRect = module.resolveRect(context);
+      final moduleRRect = RRect.fromRectAndRadius(
+        moduleRect,
+        Radius.circular(effectiveRadius),
+      ).deflate(effectiveDensity);
+      final paint = Paint()
+        ..color = _colorForModule(module)
+        ..isAntiAlias = true
+        ..style = PaintingStyle.fill;
+
+      context.canvas.drawRRect(moduleRRect, paint);
+    }
+  }
+
+  Color _colorForModule(PrettyQrModule module) {
+    final hash = module.x * 73856093 ^ module.y * 19349663 ^ seed;
+    final index = (hash & 0x7fffffff) % palette.length;
+    return palette[index];
+  }
+
+  @override
+  _TotalsRandomColorSymbol? lerpFrom(PrettyQrShape? a, double t) {
+    if (identical(a, this)) {
+      return this;
+    }
+
+    if (a == null) return this;
+    if (a is! _TotalsRandomColorSymbol) return null;
+
+    if (t == 0.0) return a;
+    if (t == 1.0) return this;
+
+    return _TotalsRandomColorSymbol(
+      palette: palette,
+      seed: seed,
+      rounding: ui.lerpDouble(a.rounding, rounding, t)!,
+      density: ui.lerpDouble(a.density, density, t)!,
+    );
+  }
+
+  @override
+  _TotalsRandomColorSymbol? lerpTo(PrettyQrShape? b, double t) {
+    if (identical(this, b)) {
+      return this;
+    }
+
+    if (b == null) return this;
+    if (b is! _TotalsRandomColorSymbol) return null;
+
+    if (t == 0.0) return this;
+    if (t == 1.0) return b;
+
+    return _TotalsRandomColorSymbol(
+      palette: palette,
+      seed: seed,
+      rounding: ui.lerpDouble(rounding, b.rounding, t)!,
+      density: ui.lerpDouble(density, b.density, t)!,
+    );
+  }
 }
 
 class _QrPreviewCard extends StatelessWidget {
@@ -354,6 +499,7 @@ class _QrPreviewCard extends StatelessWidget {
   final String? data;
   final String? sharedName;
   final ColorScheme colorScheme;
+  final PrettyQrShape qrShape;
   final VoidCallback onShare;
 
   const _QrPreviewCard({
@@ -361,6 +507,7 @@ class _QrPreviewCard extends StatelessWidget {
     required this.data,
     required this.sharedName,
     required this.colorScheme,
+    required this.qrShape,
     required this.onShare,
   });
 
@@ -391,26 +538,43 @@ class _QrPreviewCard extends StatelessWidget {
           if (hasData) ...[
             RepaintBoundary(
               key: qrKey,
-              child: Container(
-                color: Colors.white,
-                padding: const EdgeInsets.all(16),
-                child: QrImageView(
-                  data: data!,
-                  size: 220,
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
-                  embeddedImage: const AssetImage('assets/icon/totals_icon.png'),
-                  embeddedImageStyle: const QrEmbeddedImageStyle(
-                    size: Size(46, 46),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.all(16),
+                  child: Builder(
+                    builder: (context) {
+                      Widget qrView;
+                      try {
+                        qrView = PrettyQrView.data(
+                          data: data!,
+                          decoration: PrettyQrDecoration(
+                            background: Colors.white,
+                            shape: qrShape,
+                            image: const PrettyQrDecorationImage(
+                              image: AssetImage('assets/icon/totals_icon.png'),
+                              scale: 0.2,
+                              padding: EdgeInsets.all(6),
+                            ),
+                          ),
+                        );
+                      } catch (_) {
+                        qrView = Text(
+                          'Too much data to render QR',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        );
+                      }
+
+                      return SizedBox(
+                        width: 220,
+                        height: 220,
+                        child: Center(child: qrView),
+                      );
+                    },
                   ),
-                  errorStateBuilder: (context, error) {
-                    return Text(
-                      'Too much data to render QR',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    );
-                  },
                 ),
               ),
             ),
@@ -420,7 +584,8 @@ class _QrPreviewCard extends StatelessWidget {
               icon: const Icon(Icons.share),
               label: const Text('Share QR Code'),
               style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
             ),
           ] else
@@ -448,7 +613,7 @@ class _QrPreviewCard extends StatelessWidget {
           Text(
             sharedName == null || sharedName!.isEmpty
                 ? 'Select accounts to share from your quick access list.'
-                : 'Sharing as $sharedName. Have someone scan to add accounts.',
+                : 'Sharing as $sharedName. Have someone scan to add your accounts.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodySmall?.copyWith(
               color: colorScheme.onSurfaceVariant,
@@ -479,8 +644,7 @@ class _BankSectionHeader extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final bankName = bank?.shortName ?? bank?.name ?? 'Bank';
     bool isSelected(Account account) {
-      return selectedKeys
-          .contains('${account.bank}:${account.accountNumber}');
+      return selectedKeys.contains('${account.bank}:${account.accountNumber}');
     }
 
     final allSelected = accounts.every(isSelected);
