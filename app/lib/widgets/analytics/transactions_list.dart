@@ -284,6 +284,8 @@ class _TransactionsListState extends State<TransactionsList> {
                   isSelected:
                       widget.selectedReferences.contains(transaction.reference),
                   dimSelfTransfers: widget.dimSelfTransfers,
+                  showDate: widget.sortBy != 'Date',
+                  showTime: true,
                   onTap: widget.onTransactionTap != null
                       ? () => widget.onTransactionTap!(transaction)
                       : null,
@@ -484,6 +486,7 @@ class TransactionListItem extends StatelessWidget {
   final VoidCallback? onLongPress;
   final bool dimSelfTransfers;
   final bool showDate;
+  final bool showTime;
 
   const TransactionListItem({
     required this.transaction,
@@ -496,6 +499,7 @@ class TransactionListItem extends StatelessWidget {
     required this.onLongPress,
     required this.dimSelfTransfers,
     this.showDate = true,
+    this.showTime = true,
   });
 
   @override
@@ -504,7 +508,7 @@ class TransactionListItem extends StatelessWidget {
     DateTime? dateTime;
     String? dateStr;
     String? timeStr;
-    if (showDate) {
+    if (showDate || showTime) {
       dateTime = transaction.time != null
           ? (() {
               try {
@@ -668,19 +672,21 @@ class TransactionListItem extends StatelessWidget {
                                 : Theme.of(context).colorScheme.error,
                           ),
                         ),
-                        if (dateTime != null) ...[
+                        if ((showDate || showTime) && dateTime != null) ...[
                           const SizedBox(height: 4),
-                          Text(
-                            dateStr,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color:
-                                  Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          if (timeStr.isNotEmpty)
+                          if (showDate)
                             Text(
-                              timeStr,
+                              dateStr ?? '',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
+                            ),
+                          if (showTime && timeStr != null && timeStr!.isNotEmpty)
+                            Text(
+                              timeStr!,
                               style: TextStyle(
                                 fontSize: 11,
                                 color: Theme.of(context)
