@@ -9,6 +9,7 @@ import 'package:totals/models/transaction.dart';
 import 'package:totals/providers/transaction_provider.dart';
 import 'package:totals/utils/text_utils.dart';
 import 'package:totals/widgets/analytics/transactions_list.dart';
+import 'package:totals/widgets/transaction_day_header.dart';
 import 'package:totals/widgets/category_filter_button.dart';
 import 'package:totals/widgets/category_filter_sheet.dart';
 import 'package:totals/widgets/categorize_transaction_sheet.dart';
@@ -127,6 +128,34 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
     } catch (e) {
       return 'Bank $bankId';
     }
+  }
+
+  DateTime? _parseTransactionDate(Transaction transaction) {
+    final raw = transaction.time;
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      return DateTime.parse(raw);
+    } catch (_) {
+      return DateTime.tryParse(raw);
+    }
+  }
+
+  DateTime _dateOnly(DateTime date) {
+    return date.isUtc
+        ? DateTime.utc(date.year, date.month, date.day)
+        : DateTime(date.year, date.month, date.day);
+  }
+
+  DateTime? _transactionDay(Transaction transaction) {
+    final parsed = _parseTransactionDate(transaction);
+    if (parsed == null) return null;
+    return _dateOnly(parsed);
+  }
+
+  bool _isSameDay(DateTime? a, DateTime? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
   bool _matchesCategorySelection(int? categoryId, Set<int?> selection) {
@@ -836,29 +865,42 @@ class _AccountDetailPageState extends State<AccountDetailPage> {
                       itemCount: visibleTransaction.length,
                       itemBuilder: (context, index) {
                         final transaction = visibleTransaction[index];
-                        return TransactionListItem(
-                          transaction: transaction,
-                          bankLabel: _getBankLabel(transaction),
-                          provider: provider,
-                          formatCurrency: _formatCurrency,
-                          selectionMode: _isSelectionMode,
-                          isSelected: _selectedReferences
-                              .contains(transaction.reference),
-                          dimSelfTransfers: false,
-                          onLongPress: () {
-                            _toggleSelection(transaction);
-                          },
-                          onTap: () async {
-                            if (_isSelectionMode) {
-                              _toggleSelection(transaction);
-                              return;
-                            }
-                            await showCategorizeTransactionSheet(
-                              context: context,
-                              provider: provider,
+                        final transactionDay = _transactionDay(transaction);
+                        final previousDay = index > 0
+                            ? _transactionDay(visibleTransaction[index - 1])
+                            : null;
+                        final showDayHeader = index == 0 ||
+                            !_isSameDay(transactionDay, previousDay);
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (showDayHeader)
+                              TransactionDayHeader(date: transactionDay),
+                            TransactionListItem(
                               transaction: transaction,
-                            );
-                          },
+                              bankLabel: _getBankLabel(transaction),
+                              provider: provider,
+                              formatCurrency: _formatCurrency,
+                              selectionMode: _isSelectionMode,
+                              isSelected: _selectedReferences
+                                  .contains(transaction.reference),
+                              dimSelfTransfers: false,
+                              onLongPress: () {
+                                _toggleSelection(transaction);
+                              },
+                              onTap: () async {
+                                if (_isSelectionMode) {
+                                  _toggleSelection(transaction);
+                                  return;
+                                }
+                                await showCategorizeTransactionSheet(
+                                  context: context,
+                                  provider: provider,
+                                  transaction: transaction,
+                                );
+                              },
+                            ),
+                          ],
                         );
                       },
                     ),

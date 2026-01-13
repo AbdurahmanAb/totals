@@ -8,6 +8,7 @@ import 'package:totals/utils/category_icons.dart';
 import 'package:totals/utils/category_style.dart';
 import 'package:totals/utils/text_utils.dart';
 import 'package:totals/constants/cash_constants.dart';
+import 'package:totals/widgets/transaction_day_header.dart';
 
 class TransactionsList extends StatefulWidget {
   final List<Transaction> transactions;
@@ -87,6 +88,34 @@ class _TransactionsListState extends State<TransactionsList> {
       return CashConstants.bankShortName;
     }
     return _bankLabelsById[bankId] ?? 'Bank $bankId';
+  }
+
+  DateTime? _parseTransactionDate(Transaction transaction) {
+    final raw = transaction.time;
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      return DateTime.parse(raw);
+    } catch (_) {
+      return DateTime.tryParse(raw);
+    }
+  }
+
+  DateTime _dateOnly(DateTime date) {
+    return date.isUtc
+        ? DateTime.utc(date.year, date.month, date.day)
+        : DateTime(date.year, date.month, date.day);
+  }
+
+  DateTime? _transactionDay(Transaction transaction) {
+    final parsed = _parseTransactionDate(transaction);
+    if (parsed == null) return null;
+    return _dateOnly(parsed);
+  }
+
+  bool _isSameDay(DateTime? a, DateTime? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
   @override
@@ -235,21 +264,34 @@ class _TransactionsListState extends State<TransactionsList> {
           itemCount: paginatedTransactions.length,
           itemBuilder: (context, index) {
             final transaction = paginatedTransactions[index];
-            return TransactionListItem(
-              transaction: transaction,
-              bankLabel: _getBankLabel(transaction),
-              provider: widget.provider,
-              formatCurrency: _formatCurrency,
-              selectionMode: selectionMode,
-              isSelected:
-                  widget.selectedReferences.contains(transaction.reference),
-              dimSelfTransfers: widget.dimSelfTransfers,
-              onTap: widget.onTransactionTap != null
-                  ? () => widget.onTransactionTap!(transaction)
-                  : null,
-              onLongPress: widget.onTransactionLongPress != null
-                  ? () => widget.onTransactionLongPress!(transaction)
-                  : null,
+            final transactionDay = _transactionDay(transaction);
+            final previousDay = index > 0
+                ? _transactionDay(paginatedTransactions[index - 1])
+                : null;
+            final showDayHeader = widget.sortBy == 'Date' &&
+                (index == 0 || !_isSameDay(transactionDay, previousDay));
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (showDayHeader)
+                  TransactionDayHeader(date: transactionDay),
+                TransactionListItem(
+                  transaction: transaction,
+                  bankLabel: _getBankLabel(transaction),
+                  provider: widget.provider,
+                  formatCurrency: _formatCurrency,
+                  selectionMode: selectionMode,
+                  isSelected:
+                      widget.selectedReferences.contains(transaction.reference),
+                  dimSelfTransfers: widget.dimSelfTransfers,
+                  onTap: widget.onTransactionTap != null
+                      ? () => widget.onTransactionTap!(transaction)
+                      : null,
+                  onLongPress: widget.onTransactionLongPress != null
+                      ? () => widget.onTransactionLongPress!(transaction)
+                      : null,
+                ),
+              ],
             );
           },
         ),
@@ -441,6 +483,7 @@ class TransactionListItem extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
   final bool dimSelfTransfers;
+  final bool showDate;
 
   const TransactionListItem({
     required this.transaction,
@@ -452,25 +495,31 @@ class TransactionListItem extends StatelessWidget {
     required this.onTap,
     required this.onLongPress,
     required this.dimSelfTransfers,
+    this.showDate = true,
   });
 
   @override
   Widget build(BuildContext context) {
     final isCredit = transaction.type == 'CREDIT';
-    final dateTime = transaction.time != null
-        ? (() {
-            try {
-              return DateTime.parse(transaction.time!);
-            } catch (e) {
-              return null;
-            }
-          })()
-        : null;
-    final dateStr = dateTime != null
-        ? DateFormat('MMM dd, yyyy').format(dateTime)
-        : 'Unknown date';
-    final timeStr =
-        dateTime != null ? DateFormat('hh:mm a').format(dateTime) : '';
+    DateTime? dateTime;
+    String? dateStr;
+    String? timeStr;
+    if (showDate) {
+      dateTime = transaction.time != null
+          ? (() {
+              try {
+                return DateTime.parse(transaction.time!);
+              } catch (e) {
+                return null;
+              }
+            })()
+          : null;
+      dateStr = dateTime != null
+          ? DateFormat('MMM dd, yyyy').format(dateTime)
+          : 'Unknown date';
+      timeStr =
+          dateTime != null ? DateFormat('hh:mm a').format(dateTime) : '';
+    }
 
     final sender = transaction.creditor?.trim();
     final receiver = transaction.receiver?.trim();
