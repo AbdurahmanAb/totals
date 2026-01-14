@@ -144,7 +144,7 @@ class ExpenseWidgetProvider : HomeWidgetProvider() {
             )
             views.setTextViewText(
                 R.id.toggle_flow,
-                if (showIncome) "Income" else "Spending"
+                if (showIncome) "Show spending" else "Show income"
             )
 
             val categoryRowIds = listOf(
@@ -222,7 +222,7 @@ class ExpenseWidgetProvider : HomeWidgetProvider() {
                         views.setTextViewText(categoryAmountIds[i], "$percent%")
                         views.setInt(categoryDotIds[i], "setColorFilter", rankColors[i])
                     } else {
-                        views.setViewVisibility(categoryRowIds[i], View.GONE)
+                        views.setViewVisibility(categoryRowIds[i], View.INVISIBLE)
                     }
                 }
             } else {
@@ -256,7 +256,7 @@ class ExpenseWidgetProvider : HomeWidgetProvider() {
                         views.setTextViewText(categoryAmountIds[i], amount)
                         views.setInt(categoryDotIds[i], "setColorFilter", rankColors[i])
                     } else {
-                        views.setViewVisibility(categoryRowIds[i], View.GONE)
+                        views.setViewVisibility(categoryRowIds[i], View.INVISIBLE)
                     }
                 }
             }
