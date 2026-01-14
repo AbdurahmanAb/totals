@@ -53,7 +53,7 @@ class WidgetDataProvider {
         _telebirrMatchService =
             telebirrMatchService ?? TelebirrBankTransferService();
 
-  Future<List<Transaction>> _getTodayDebitTransactions() async {
+  Future<List<Transaction>> _getTodayTransactionsByType(String type) async {
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day);
     final endOfDay = startOfDay.add(const Duration(days: 1));
@@ -61,10 +61,18 @@ class WidgetDataProvider {
     final transactions = await _transactionRepository.getTransactionsByDateRange(
       startOfDay,
       endOfDay,
-      type: 'DEBIT',
+      type: type,
     );
 
     return _filterOutSelfTransfers(transactions);
+  }
+
+  Future<List<Transaction>> _getTodayDebitTransactions() async {
+    return _getTodayTransactionsByType('DEBIT');
+  }
+
+  Future<List<Transaction>> _getTodayCreditTransactions() async {
+    return _getTodayTransactionsByType('CREDIT');
   }
 
   Future<List<Transaction>> _filterOutSelfTransfers(
@@ -119,8 +127,9 @@ class WidgetDataProvider {
     return toSelfReferences;
   }
 
-  Future<List<CategoryExpense>> getTodayCategoryBreakdown() async {
-    final transactions = await _getTodayDebitTransactions();
+  Future<List<CategoryExpense>> _buildCategoryBreakdown(
+    List<Transaction> transactions,
+  ) async {
     final categories = await _categoryRepository.getCategories();
     final categoryMap = {for (final c in categories) c.id: c};
 
@@ -148,9 +157,29 @@ class WidgetDataProvider {
     }).toList();
   }
 
+  Future<List<CategoryExpense>> getTodayCategoryBreakdown() async {
+    final transactions = await _getTodayDebitTransactions();
+    return _buildCategoryBreakdown(transactions);
+  }
+
+  Future<List<CategoryExpense>> getTodayIncomeCategoryBreakdown() async {
+    final transactions = await _getTodayCreditTransactions();
+    return _buildCategoryBreakdown(transactions);
+  }
+
   /// Get today's total spending (DEBIT transactions only)
   Future<double> getTodaySpending() async {
     final transactions = await _getTodayDebitTransactions();
+
+    return transactions.fold<double>(
+      0.0,
+      (sum, tx) => sum + tx.amount,
+    );
+  }
+
+  /// Get today's total income (CREDIT transactions only)
+  Future<double> getTodayIncome() async {
+    final transactions = await _getTodayCreditTransactions();
 
     return transactions.fold<double>(
       0.0,

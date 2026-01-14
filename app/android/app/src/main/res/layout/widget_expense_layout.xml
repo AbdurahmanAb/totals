@@ -60,6 +60,20 @@
 
             </LinearLayout>
 
+            <TextView
+                android:id="@+id/toggle_flow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/widget_toggle_background"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:text="Spending"
+                android:textColor="#E0E0E0"
+                android:textSize="9sp" />
+
         </LinearLayout>
 
         <LinearLayout

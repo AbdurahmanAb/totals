@@ -24,8 +24,12 @@ class WidgetService {
     try {
       final todaySpending = await dataProvider.getTodaySpending();
       final formattedAmount = dataProvider.formatAmountForWidget(todaySpending);
+      final todayIncome = await dataProvider.getTodayIncome();
+      final formattedIncome = dataProvider.formatAmountForWidget(todayIncome);
       final lastUpdated = dataProvider.getLastUpdatedTimestamp();
       final categories = await dataProvider.getTodayCategoryBreakdown();
+      final incomeCategories =
+          await dataProvider.getTodayIncomeCategoryBreakdown();
 
       await HomeWidget.saveWidgetData<String>('expense_total', formattedAmount);
       await HomeWidget.saveWidgetData<String>(
@@ -38,30 +42,58 @@ class WidgetService {
       await HomeWidget.saveWidgetData<String>(
           'expense_categories', categoryJson);
 
-      for (int i = 0; i < 3; i++) {
-        if (i < categories.length) {
-          final cat = categories[i];
-          await HomeWidget.saveWidgetData<String>(
-              'category_${i}_name', cat.name);
-          await HomeWidget.saveWidgetData<String>(
-              'category_${i}_amount',
-              dataProvider.formatAmountForWidget(cat.amount));
-          await HomeWidget.saveWidgetData<String>(
-              'category_${i}_amount_raw', cat.amount.toString());
-          await HomeWidget.saveWidgetData<String>(
-              'category_${i}_color', cat.colorHex);
-        } else {
-          await HomeWidget.saveWidgetData<String>('category_${i}_name', '');
-          await HomeWidget.saveWidgetData<String>('category_${i}_amount', '');
-          await HomeWidget.saveWidgetData<String>('category_${i}_amount_raw', '0');
-          await HomeWidget.saveWidgetData<String>('category_${i}_color', '');
-        }
-      }
+      await HomeWidget.saveWidgetData<String>('income_total', formattedIncome);
+      await HomeWidget.saveWidgetData<String>(
+          'income_total_raw', todayIncome.toString());
+      await HomeWidget.saveWidgetData<String>(
+          'income_last_updated', lastUpdated);
+
+      final incomeCategoryJson =
+          jsonEncode(incomeCategories.map((c) => c.toJson()).toList());
+      await HomeWidget.saveWidgetData<String>(
+          'income_categories', incomeCategoryJson);
+
+      await _saveCategoryData(
+        prefix: 'category',
+        categories: categories,
+      );
+      await _saveCategoryData(
+        prefix: 'income_category',
+        categories: incomeCategories,
+      );
       await HomeWidget.updateWidget(androidName: androidWidgetName);
 
-      print('Widget updated: $formattedAmount at $lastUpdated');
+      print(
+        'Widget updated: $formattedAmount / $formattedIncome at $lastUpdated',
+      );
     } catch (e) {
       print('Error updating widget: $e');
+    }
+  }
+
+  static Future<void> _saveCategoryData({
+    required String prefix,
+    required List<CategoryExpense> categories,
+  }) async {
+    for (int i = 0; i < 3; i++) {
+      if (i < categories.length) {
+        final cat = categories[i];
+        await HomeWidget.saveWidgetData<String>(
+            '${prefix}_${i}_name', cat.name);
+        await HomeWidget.saveWidgetData<String>(
+            '${prefix}_${i}_amount',
+            dataProvider.formatAmountForWidget(cat.amount));
+        await HomeWidget.saveWidgetData<String>(
+            '${prefix}_${i}_amount_raw', cat.amount.toString());
+        await HomeWidget.saveWidgetData<String>(
+            '${prefix}_${i}_color', cat.colorHex);
+      } else {
+        await HomeWidget.saveWidgetData<String>('${prefix}_${i}_name', '');
+        await HomeWidget.saveWidgetData<String>('${prefix}_${i}_amount', '');
+        await HomeWidget.saveWidgetData<String>(
+            '${prefix}_${i}_amount_raw', '0');
+        await HomeWidget.saveWidgetData<String>('${prefix}_${i}_color', '');
+      }
     }
   }
 
