@@ -74,7 +74,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _notificationIntentSub = NotificationIntentBus.instance.stream.listen(
       (intent) {
         if (!mounted) return;
-        if (intent is CategorizeTransactionIntent) {
+        if (intent is QuickCategorizeTransactionIntent) {
+          _handleQuickCategorize(intent.reference, intent.categoryId);
+        } else if (intent is CategorizeTransactionIntent) {
           _handleNotificationCategorize(intent.reference);
         }
       },
@@ -249,6 +251,34 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       return;
     }
     _openTodayFromNotification(reference, openSheet: true);
+  }
+
+  Future<void> _handleQuickCategorize(String reference, int categoryId) async {
+    if (!mounted) return;
+    final provider = Provider.of<TransactionProvider>(context, listen: false);
+    final transaction = provider.transactions.where(
+      (t) => t.reference == reference,
+    ).firstOrNull;
+
+    if (transaction == null) {
+      if (kDebugMode) {
+        print('debug: Quick categorize: transaction not found for $reference');
+      }
+      return;
+    }
+
+    final category = provider.getCategoryById(categoryId);
+    if (category == null) {
+      if (kDebugMode) {
+        print('debug: Quick categorize: category not found for $categoryId');
+      }
+      return;
+    }
+
+    await provider.setCategoryForTransaction(transaction, category);
+    if (kDebugMode) {
+      print('debug: Quick categorized ${transaction.reference} as ${category.name}');
+    }
   }
 
   void _highlightTransaction(String reference) {

@@ -24,7 +24,7 @@
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data android:name="flutterEmbedding" android:value="2" />
 
-        <receiver android:name=".ExpenseWidgetProvider"
+        <receiver android:name="com.example.offline_gateway.ExpenseWidgetProvider"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -33,6 +33,10 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/expense_widget_info" />
         </receiver>
+
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver"
+            android:exported="false" />
 
         <receiver android:name="com.shounakmulay.telephony.sms.IncomingSmsReceiver"
             android:permission="android.permission.BROADCAST_SMS" android:exported="true">

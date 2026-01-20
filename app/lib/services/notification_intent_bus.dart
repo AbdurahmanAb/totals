@@ -30,3 +30,10 @@ class CategorizeTransactionIntent extends NotificationIntent {
   const CategorizeTransactionIntent(this.reference);
 }
 
+class QuickCategorizeTransactionIntent extends NotificationIntent {
+  final String reference;
+  final int categoryId;
+
+  const QuickCategorizeTransactionIntent(this.reference, this.categoryId);
+}
+

@@ -6,6 +6,8 @@ import 'package:totals/services/widget_data_provider.dart';
 class WidgetService {
   static const String appGroupId = 'group.com.example.totals.widget';
   static const String androidWidgetName = 'ExpenseWidgetProvider';
+  static const String androidWidgetQualifiedName =
+      'com.example.offline_gateway.$androidWidgetName';
 
   static WidgetDataProvider? _dataProvider;
 
@@ -61,7 +63,9 @@ class WidgetService {
         prefix: 'income_category',
         categories: incomeCategories,
       );
-      await HomeWidget.updateWidget(androidName: androidWidgetName);
+      await HomeWidget.updateWidget(
+        qualifiedAndroidName: androidWidgetQualifiedName,
+      );
 
       print(
         'Widget updated: $formattedAmount / $formattedIncome at $lastUpdated',
@@ -105,7 +109,7 @@ class WidgetService {
     await HomeWidget.saveWidgetData<String>('expense_total', totalAmount);
     await HomeWidget.saveWidgetData<String>('expense_last_updated', lastUpdated);
     await HomeWidget.updateWidget(
-      androidName: androidWidgetName,
+      qualifiedAndroidName: androidWidgetQualifiedName,
     );
   }
 }

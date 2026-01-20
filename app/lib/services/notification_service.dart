@@ -1,10 +1,19 @@
+import 'dart:async';
+import 'dart:ui';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:totals/data/consts.dart';
+import 'package:totals/models/category.dart' as models;
 import 'package:totals/models/transaction.dart';
+import 'package:totals/repositories/category_repository.dart';
+import 'package:totals/repositories/transaction_repository.dart';
+import 'package:totals/services/receiver_category_service.dart';
 import 'package:totals/services/notification_intent_bus.dart';
 import 'package:totals/services/notification_settings_service.dart';
+import 'package:totals/services/widget_service.dart';
 import 'package:totals/utils/text_utils.dart';
 import 'package:totals/constants/cash_constants.dart';
 
@@ -36,6 +45,7 @@ class NotificationService {
     await _plugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: _onNotificationResponse,
+      onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
 
     final androidPlugin =
@@ -78,8 +88,27 @@ class NotificationService {
   }
 
   void _onNotificationResponse(NotificationResponse response) {
+    _handleNotificationResponse(response);
+  }
+
+  Future<void> _handleNotificationResponse(NotificationResponse response) async {
     try {
-      final payload = response.payload;
+      if (response.notificationResponseType ==
+          NotificationResponseType.selectedNotificationAction) {
+        // Action button was tapped - handle quick categorization directly
+        final actionId = response.actionId;
+        if (actionId != null && actionId.contains('|cat:')) {
+          await _handleQuickCategorizeAction(actionId, response.id);
+          return;
+        }
+      }
+
+      // For regular taps, use the intent bus
+      final payload = response.notificationResponseType ==
+              NotificationResponseType.selectedNotificationAction
+          ? response.actionId
+          : response.payload;
+
       final intent = _intentFromPayload(payload);
       if (intent != null) {
         NotificationIntentBus.instance.emit(intent);
@@ -91,14 +120,95 @@ class NotificationService {
     }
   }
 
+  Future<void> _handleQuickCategorizeAction(String actionId, int? notificationId) async {
+    try {
+      await ensureInitialized();
+      // Parse: tx:<reference>|cat:<categoryId>
+      final parts = actionId.split('|cat:');
+      if (parts.length != 2) return;
+
+      final reference = Uri.decodeComponent(parts[0].substring(3)); // Remove 'tx:'
+      final categoryId = int.tryParse(parts[1]);
+      if (categoryId == null) return;
+
+      if (kDebugMode) {
+        print('debug: Quick categorize: $reference -> category $categoryId');
+      }
+
+      // Find and update the transaction
+      final txRepo = TransactionRepository();
+      final transaction = await txRepo.getTransactionByReference(reference);
+
+      if (transaction == null) {
+        if (kDebugMode) {
+          print('debug: Quick categorize: transaction not found');
+        }
+        return;
+      }
+
+      // Save with new category
+      await txRepo.saveTransaction(
+        transaction.copyWith(categoryId: categoryId),
+      );
+
+      if (kDebugMode) {
+        print('debug: Quick categorize: saved successfully');
+      }
+
+      final isAutoCategorizeEnabled = await NotificationSettingsService.instance
+          .isAutoCategorizeByReceiverEnabled();
+      if (isAutoCategorizeEnabled) {
+        final receiver = transaction.receiver;
+        if (receiver != null && receiver.isNotEmpty) {
+          await ReceiverCategoryService.instance.saveMapping(
+            receiver,
+            categoryId,
+            'receiver',
+          );
+        }
+        final creditor = transaction.creditor;
+        if (creditor != null && creditor.isNotEmpty) {
+          await ReceiverCategoryService.instance.saveMapping(
+            creditor,
+            categoryId,
+            'creditor',
+          );
+        }
+      }
+
+      // Cancel the notification
+      if (notificationId != null) {
+        await _plugin.cancel(notificationId);
+        if (kDebugMode) {
+          print('debug: Quick categorize: notification cancelled');
+        }
+      }
+
+      // Refresh widget
+      await WidgetService.refreshWidget();
+    } catch (e) {
+      if (kDebugMode) {
+        print('debug: Quick categorize failed: $e');
+      }
+    }
+  }
+
   NotificationIntent? _intentFromPayload(String? payload) {
     final raw = payload?.trim();
     if (raw == null || raw.isEmpty) return null;
 
     if (raw.startsWith('tx:')) {
-      final encoded = raw.substring(3);
-      final reference = Uri.decodeComponent(encoded);
+      final rest = raw.substring(3);
+      final parts = rest.split('|cat:');
+      final reference = Uri.decodeComponent(parts[0]);
       if (reference.trim().isEmpty) return null;
+
+      if (parts.length > 1) {
+        final categoryId = int.tryParse(parts[1]);
+        if (categoryId != null) {
+          return QuickCategorizeTransactionIntent(reference, categoryId);
+        }
+      }
       return CategorizeTransactionIntent(reference);
     }
 
@@ -184,11 +294,19 @@ class NotificationService {
       final id = _notificationId(transaction);
       final payload = 'tx:${Uri.encodeComponent(transaction.reference)}';
 
+      final actions = await _buildQuickCategoryActions(transaction);
+      if (kDebugMode) {
+        print('debug: Transaction notification actions: ${actions.length}');
+        for (final a in actions) {
+          print('debug:   - ${a.title} (${a.id})');
+        }
+      }
+
       await _plugin.show(
         id,
         title,
         body,
-        const NotificationDetails(
+        NotificationDetails(
           android: AndroidNotificationDetails(
             _transactionChannelId,
             'Transactions',
@@ -196,8 +314,9 @@ class NotificationService {
                 'Notifications when a new transaction is detected',
             importance: Importance.high,
             priority: Priority.high,
+            actions: actions,
           ),
-          iOS: DarwinNotificationDetails(),
+          iOS: const DarwinNotificationDetails(),
         ),
         payload: payload,
       );
@@ -205,6 +324,47 @@ class NotificationService {
       if (kDebugMode) {
         print('debug: Failed to show transaction notification: $e');
       }
+    }
+  }
+
+  Future<List<AndroidNotificationAction>> _buildQuickCategoryActions(
+    Transaction transaction,
+  ) async {
+    try {
+      final settings = NotificationSettingsService.instance;
+      final isIncome = transaction.type == 'CREDIT';
+      final categoryIds = isIncome
+          ? await settings.getQuickCategorizeIncomeIds()
+          : await settings.getQuickCategorizeExpenseIds();
+
+      if (categoryIds.isEmpty) return [];
+
+      final allCategories = await CategoryRepository().getCategories();
+      final List<models.Category> categories = [];
+      for (final id in categoryIds) {
+        final cat = allCategories.where((c) => c.id == id).firstOrNull;
+        if (cat != null) categories.add(cat);
+        if (categories.length >= 3) break;
+      }
+
+      if (categories.isEmpty) return [];
+
+      final List<AndroidNotificationAction> actions = [];
+      for (final cat in categories) {
+        final actionPayload =
+            'tx:${Uri.encodeComponent(transaction.reference)}|cat:${cat.id}';
+        actions.add(AndroidNotificationAction(
+          actionPayload,
+          cat.name,
+          showsUserInterface: false,
+        ));
+      }
+      return actions;
+    } catch (e) {
+      if (kDebugMode) {
+        print('debug: Failed to build quick category actions: $e');
+      }
+      return [];
     }
   }
 
@@ -444,4 +604,35 @@ class NotificationService {
     if (trimmed.length <= 4) return trimmed;
     return '****${trimmed.substring(trimmed.length - 4)}';
   }
+}
+
+@pragma('vm:entry-point')
+void notificationTapBackground(NotificationResponse response) {
+  WidgetsFlutterBinding.ensureInitialized();
+  DartPluginRegistrant.ensureInitialized();
+
+  if (kDebugMode) {
+    print('debug: Background notification action: ${response.actionId}');
+  }
+
+  if (response.notificationResponseType !=
+      NotificationResponseType.selectedNotificationAction) {
+    return;
+  }
+
+  final actionId = response.actionId;
+  if (actionId == null || !actionId.contains('|cat:')) return;
+
+  unawaited(_handleQuickCategorizeFromBackground(actionId, response.id));
+}
+
+Future<void> _handleQuickCategorizeFromBackground(
+  String actionId,
+  int? notificationId,
+) async {
+  await WidgetService.initialize();
+  await NotificationService.instance._handleQuickCategorizeAction(
+    actionId,
+    notificationId,
+  );
 }

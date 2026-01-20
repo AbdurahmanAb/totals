@@ -14,6 +14,8 @@ class NotificationSettingsService {
   static const _kDailyMinute = 'notifications_daily_minute';
   static const _kDailyLastSentEpochMs = 'notifications_daily_last_sent_epoch_ms';
   static const _kAutoCategorizeReceiverEnabled = 'auto_categorize_receiver_enabled';
+  static const _kQuickCategorizeIncomeIds = 'quick_categorize_income_ids';
+  static const _kQuickCategorizeExpenseIds = 'quick_categorize_expense_ids';
 
   Future<bool> isTransactionNotificationsEnabled() async {
     final prefs = await SharedPreferences.getInstance();
@@ -83,5 +85,37 @@ class NotificationSettingsService {
   Future<void> setAutoCategorizeByReceiverEnabled(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kAutoCategorizeReceiverEnabled, enabled);
+  }
+
+  Future<List<int>> getQuickCategorizeIncomeIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getStringList(_kQuickCategorizeIncomeIds);
+    if (raw == null) return [];
+    return raw.map((s) => int.tryParse(s)).whereType<int>().toList();
+  }
+
+  Future<void> setQuickCategorizeIncomeIds(List<int> ids) async {
+    final prefs = await SharedPreferences.getInstance();
+    final limited = ids.take(3).toList();
+    await prefs.setStringList(
+      _kQuickCategorizeIncomeIds,
+      limited.map((id) => id.toString()).toList(),
+    );
+  }
+
+  Future<List<int>> getQuickCategorizeExpenseIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getStringList(_kQuickCategorizeExpenseIds);
+    if (raw == null) return [];
+    return raw.map((s) => int.tryParse(s)).whereType<int>().toList();
+  }
+
+  Future<void> setQuickCategorizeExpenseIds(List<int> ids) async {
+    final prefs = await SharedPreferences.getInstance();
+    final limited = ids.take(3).toList();
+    await prefs.setStringList(
+      _kQuickCategorizeExpenseIds,
+      limited.map((id) => id.toString()).toList(),
+    );
   }
 }

@@ -144,7 +144,7 @@ class ExpenseWidgetProvider : HomeWidgetProvider() {
             )
             views.setTextViewText(
                 R.id.toggle_flow,
-                if (showIncome) "Show spending" else "Show income"
+                if (showIncome) "Show Spending" else "Show Income"
             )
 
             val categoryRowIds = listOf(

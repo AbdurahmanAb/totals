@@ -28,25 +28,60 @@ class TransactionRepository {
           )
         : await db.query('transactions', orderBy: 'time DESC, id DESC');
 
-    return maps.map<Transaction>((map) {
-      return Transaction.fromJson({
-        'amount': map['amount'],
-        'reference': map['reference'],
-        'creditor': map['creditor'],
-        'receiver': map['receiver'],
-        'time': map['time'],
-        'status': map['status'],
-        'currentBalance': map['currentBalance'],
-        'serviceCharge': map['serviceCharge'],
-        'vat': map['vat'],
-        'bankId': map['bankId'],
-        'type': map['type'],
-        'transactionLink': map['transactionLink'],
-        'accountNumber': map['accountNumber'],
-        'categoryId': map['categoryId'],
-        'profileId': map['profileId'],
-      });
-    }).toList();
+    return maps.map<Transaction>(_transactionFromMap).toList();
+  }
+
+  Future<Transaction?> getTransactionByReference(String reference) async {
+    final db = await DatabaseHelper.instance.database;
+    final activeProfileId = await _getActiveProfileId();
+
+    List<Map<String, dynamic>> maps;
+    if (activeProfileId != null) {
+      maps = await db.query(
+        'transactions',
+        where: 'reference = ? AND profileId = ?',
+        whereArgs: [reference, activeProfileId],
+        limit: 1,
+      );
+      if (maps.isEmpty) {
+        maps = await db.query(
+          'transactions',
+          where: 'reference = ?',
+          whereArgs: [reference],
+          limit: 1,
+        );
+      }
+    } else {
+      maps = await db.query(
+        'transactions',
+        where: 'reference = ?',
+        whereArgs: [reference],
+        limit: 1,
+      );
+    }
+
+    if (maps.isEmpty) return null;
+    return _transactionFromMap(maps.first);
+  }
+
+  Transaction _transactionFromMap(Map<String, dynamic> map) {
+    return Transaction.fromJson({
+      'amount': map['amount'],
+      'reference': map['reference'],
+      'creditor': map['creditor'],
+      'receiver': map['receiver'],
+      'time': map['time'],
+      'status': map['status'],
+      'currentBalance': map['currentBalance'],
+      'serviceCharge': map['serviceCharge'],
+      'vat': map['vat'],
+      'bankId': map['bankId'],
+      'type': map['type'],
+      'transactionLink': map['transactionLink'],
+      'accountNumber': map['accountNumber'],
+      'categoryId': map['categoryId'],
+      'profileId': map['profileId'],
+    });
   }
 
   Future<void> saveTransaction(

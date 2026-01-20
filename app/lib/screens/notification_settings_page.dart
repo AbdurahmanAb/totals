@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:totals/models/category.dart';
+import 'package:totals/repositories/category_repository.dart';
 import 'package:totals/repositories/transaction_repository.dart';
 import 'package:totals/services/notification_service.dart';
 import 'package:totals/services/notification_scheduler.dart';
 import 'package:totals/services/notification_settings_service.dart';
+import 'package:totals/utils/category_icons.dart';
 
 class NotificationSettingsPage extends StatefulWidget {
   const NotificationSettingsPage({super.key});
@@ -21,6 +24,9 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   bool _dailyEnabled = true;
   TimeOfDay _dailyTime = const TimeOfDay(hour: 20, minute: 0);
   DateTime? _lastDailySummarySentAt;
+  List<Category> _allCategories = [];
+  List<int> _quickIncomeIds = [];
+  List<int> _quickExpenseIds = [];
 
   @override
   void initState() {
@@ -35,6 +41,9 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     final daily = await settings.isDailySummaryEnabled();
     final time = await settings.getDailySummaryTime();
     final lastSent = await settings.getDailySummaryLastSentAt();
+    final categories = await CategoryRepository().getCategories();
+    final incomeIds = await settings.getQuickCategorizeIncomeIds();
+    final expenseIds = await settings.getQuickCategorizeExpenseIds();
     if (!mounted) return;
     setState(() {
       _transactionEnabled = tx;
@@ -42,6 +51,9 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       _dailyEnabled = daily;
       _dailyTime = time;
       _lastDailySummarySentAt = lastSent;
+      _allCategories = categories;
+      _quickIncomeIds = incomeIds;
+      _quickExpenseIds = expenseIds;
       _loading = false;
     });
   }
@@ -149,6 +161,154 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
+  List<Category> _categoriesForFlow(String flow) {
+    return _allCategories
+        .where((c) => c.flow.toLowerCase() == flow && !c.uncategorized)
+        .toList();
+  }
+
+  List<Category> _selectedCategoriesFor(String flow) {
+    final ids = flow == 'income' ? _quickIncomeIds : _quickExpenseIds;
+    return ids
+        .map((id) => _allCategories.where((c) => c.id == id).firstOrNull)
+        .whereType<Category>()
+        .toList();
+  }
+
+  Future<void> _openQuickCategoryPicker(String flow) async {
+    final available = _categoriesForFlow(flow);
+    final currentIds =
+        flow == 'income' ? List<int>.from(_quickIncomeIds) : List<int>.from(_quickExpenseIds);
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Text(
+                        flow == 'income'
+                            ? 'Quick categories for income'
+                            : 'Quick categories for expenses',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Theme.of(ctx).colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'Select up to 3 categories',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(ctx).size.height * 0.5,
+                      ),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: available.length,
+                        itemBuilder: (ctx, index) {
+                          final cat = available[index];
+                          final selected = currentIds.contains(cat.id);
+                          return CheckboxListTile(
+                            value: selected,
+                            onChanged: (val) {
+                              if (val == true && cat.id != null) {
+                                if (currentIds.length >= 3) return;
+                                setSheetState(() => currentIds.add(cat.id!));
+                              } else if (cat.id != null) {
+                                setSheetState(() => currentIds.remove(cat.id!));
+                              }
+                            },
+                            secondary: Icon(iconForCategoryKey(cat.iconKey)),
+                            title: Text(cat.name),
+                            controlAffinity: ListTileControlAffinity.trailing,
+                          );
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Cancel'),
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton(
+                            onPressed: () async {
+                              Navigator.pop(ctx);
+                              if (flow == 'income') {
+                                setState(() => _quickIncomeIds = currentIds);
+                                await NotificationSettingsService.instance
+                                    .setQuickCategorizeIncomeIds(currentIds);
+                              } else {
+                                setState(() => _quickExpenseIds = currentIds);
+                                await NotificationSettingsService.instance
+                                    .setQuickCategorizeExpenseIds(currentIds);
+                              }
+                            },
+                            child: const Text('Save'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildQuickCategoryChips(String flow) {
+    final selected = _selectedCategoriesFor(flow);
+    if (selected.isEmpty) {
+      return Text(
+        'None selected',
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      );
+    }
+    return Wrap(
+      spacing: 8,
+      runSpacing: 4,
+      children: selected.map((cat) {
+        return Chip(
+          avatar: Icon(
+            iconForCategoryKey(cat.iconKey),
+            size: 18,
+          ),
+          label: Text(cat.name),
+          visualDensity: VisualDensity.compact,
+        );
+      }).toList(),
+    );
+  }
+
   Future<void> _requestNotificationPermission() async {
     final status = await Permission.notification.status;
 
@@ -220,7 +380,44 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                         const Text('Notify when a new transaction is detected'),
                   ),
                 ),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 8),
+                  child: Text(
+                    'Quick categorize',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ),
+                Card(
+                  child: ListTile(
+                    enabled: _transactionEnabled,
+                    leading: const Icon(Icons.arrow_downward_rounded),
+                    title: const Text('Income notifications'),
+                    subtitle: _buildQuickCategoryChips('income'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _transactionEnabled
+                        ? () => _openQuickCategoryPicker('income')
+                        : null,
+                  ),
+                ),
                 const SizedBox(height: 8),
+                Card(
+                  child: ListTile(
+                    enabled: _transactionEnabled,
+                    leading: const Icon(Icons.arrow_upward_rounded),
+                    title: const Text('Expense notifications'),
+                    subtitle: _buildQuickCategoryChips('expense'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _transactionEnabled
+                        ? () => _openQuickCategoryPicker('expense')
+                        : null,
+                  ),
+                ),
+                const SizedBox(height: 16),
                 Card(
                   child: SwitchListTile(
                     value: _budgetEnabled,
